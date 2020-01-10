@@ -1,0 +1,9 @@
+1) test_snow - default simulation without any changes
+
+2) test_snow1 - simulation with both symmetric and skew-symmetric terms in apic formulation
+
+3) test_snow2 - test_snow1 + grid based density rather than using constant density
+
+4) test_snow3 - test_snow1(X) + i.e. Only grid based density rather than using constant density
+
+5) test_snow4 - test_snow3 + w/o damping setting damping parameter to 0.0
