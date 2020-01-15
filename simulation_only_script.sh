@@ -13,7 +13,6 @@ export OMP_WAIT_POLICY=active
 export OMP_DYNAMIC=false
 export OMP_PROC_BIND=true
 
-rm -r cuboid_snow
-mkdir cuboid_snow
-# ./poff_no_graph -l material/snow0.conf -s scenes/falling_cube_cylinder0.sc -e test_snow3/test -es 10 -stop 10000
-./poff_no_graph -l material/snow0.conf -s scenes/column0.sc -e cuboid_snow/test -es 10 -stop 4000
+rm -r results/bouncy6
+mkdir results/bouncy6
+./poff_no_graph -l material/bouncy.conf -s scenes/falling_sphere.sc -e results/bouncy6/test -es 10 -stop 6000

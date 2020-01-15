@@ -7,6 +7,8 @@
 #include "Grid.hpp"
 #include "Particule.hpp"
 #include "Obstacle.hpp"
+#include <SDL2/SDL.h>
+// #include "Scene.hpp"
 
 
 class Simulation : public Object {
@@ -48,9 +50,12 @@ public :
   void importSim();
   void exportSim() const;
 
+
   void setLoad(std::string s);
   void setExport(std::string s);
   void setImport(std::string s);
+  void setImage(std::string s);
+
   void setScene(std::string s);
   
   void backward(uint n);

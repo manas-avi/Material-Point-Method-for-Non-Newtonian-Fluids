@@ -2,9 +2,8 @@
 /***  MPM Piles Of StuFF  *******************************/
 /********************************************************/
 
-
-
-
+// To generate video in the images folder
+ffmpeg -r 5 -i frame%04d.png -c:v libx264 -vf "fps=25,format=yuv420p" out.mp4 
 
 ///  COMPILATION:  ////
 

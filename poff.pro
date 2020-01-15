@@ -4,7 +4,7 @@ TARGET   = poff
 #QT *= xml opengl
 QMAKE_CXXFLAGS += -g -O3 -std=c++11  -D__MODE_DEBUG=3 -D_REENTRANT -I/usr/local/include/SDL2 -DHAVE_OPENGLES3 -DHAVE_OPENGL -g -I../external/glfw-3.1.2/include/GLFW -fopenmp $(CFLAGS) -w
 
-LIBS += -L/usr/local/lib -Wl,-rpath,/usr/local/lib -Wl,--enable-new-dtags -lSDL2 -lGL -lSDL2_image -lgomp -fopenmp -lSDL2_ttf
+LIBS += -L/usr/local/lib -Wl,-rpath,/usr/local/lib -Wl,--enable-new-dtags -lSDL2 -lGL -lSDL2_image -lgomp -fopenmp -lSDL2_ttf -lfreeimage
 
 #Dossier où les exécutables seront placés
 DESTDIR = .

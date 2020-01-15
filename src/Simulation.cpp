@@ -46,10 +46,6 @@ void Simulation::init() {
 		loadScene();
 
 		grid.init(particules);
-
-    // for (auto & o : obstacles) {
-    //   grid.initCollision(o);
-    // }
 		grid.initCollision(obstacles);
 
 		INFO(1, "Lame Parameters : lambda = "<<mpm_conf::lambda_<<"    mu = "<<mpm_conf::mu_<<"\n");
@@ -58,7 +54,6 @@ void Simulation::init() {
 		if (export_) {
 			exportSim();
 		}
-
 	} else {
 		importSim();
 		loadScene();
@@ -85,15 +80,15 @@ void Simulation::clear() {
 
 void Simulation::animate() {
 	++t;
-	//  INFO(1, "Simulation step : "<<t);
+	 INFO(1, "Simulation step : "<<t);
 	if (!import_) {
 		oneStep();
-		if (export_) {
+		if (export_)
 			exportSim();
-		}
-		for (auto &ob : obstacles) {
+
+		for (auto &ob : obstacles)
 			ob->animate();
-		}
+
 	} else {
 		importSim();
 		INFO(3, particules.front()->getVolume());
@@ -107,17 +102,6 @@ void Simulation::animate() {
 
 #ifndef NO_GRAPHICS_ 
 void Simulation::draw(glm::mat4 m, int s) {
-	// QString text_ls("");
-	//  if (!stop_) {
-	//    if (load) {
-	//      text_ls = QString("using ");
-	//      text_ls += file_l;
-	//    } else if (import_) {
-	//      text_ls = QString("importing ");
-	//      text_ls += file_i;
-	//    }
-	//    drawText(width() - 200, height() - 7, text_ls);
-	//  }
 
 	Times::TIMES->tick(Times::display_time_);
 	uint cur_shader = m_shader;
@@ -147,12 +131,13 @@ void Simulation::draw(glm::mat4 m, int s) {
 void Simulation::oneStep() {
 	Times::TIMES->tick(Times::simu_time_);
 	grid.nextStep(); //resets the grid for this step.
-	if (mpm_conf::implicit_) {
-		grid.particulesToGridImplicite(particules);
-	} else {
-		grid.particulesToGrid(particules);
-		// it performs force addition there itself
-	}
+	// if (mpm_conf::implicit_) {
+	// 	grid.particulesToGridImplicite(particules);
+	// } else {
+	// 	grid.particulesToGrid(particules);
+	// 	// it performs force addition there itself
+	// }
+	grid.particulesToGrid(particules);
 	// not needed to smooth the velocities
 	if (mpm_conf::smooth_vel_) {
 		for (uint i = 0; i < 1; ++i) {
@@ -266,7 +251,6 @@ void Simulation::exportSim() const {
 		file.close();
 	}
 	++nb_file_e;
-
 }
 
 void Simulation::setLoad(std::string s) {
@@ -666,10 +650,7 @@ void Simulation::loadScene() {
 						PoissonGenerator::PRNG prng;
 						std::list<VEC3> points = PoissonGenerator::GeneratePoissonPointsR(nb_part, prng, 30, VEC3(w, l, h));
 
-						std::cout << "nb_part : " << nb_part << std::endl;
 						nb_part = points.size();
-						std::cout << "nb_part : " << nb_part << std::endl;
-
 						for (auto &v: points) {
 						    Particule *p = new Particule(volume*mpm_conf::density_/(FLOAT)nb_part, 
 						    volume/(FLOAT)nb_part, v + VEC3(xmin, ymin, zmin), VEC3(0, 0, 1), vel);
@@ -719,23 +700,20 @@ void Simulation::loadScene() {
 						PoissonGenerator::PRNG prng;
 						std::list<VEC3> points = PoissonGenerator::GeneratePoissonPointsC(nb_part, prng,
 						 30, radius);
-						std::cout << "nb_part : " << nb_part << std::endl;
 						nb_part = points.size();
-						std::cout << "nb_part : " << nb_part << std::endl;
 						for (auto &v: points) {
 							Particule *p = new Particule(volume*mpm_conf::density_/(FLOAT)nb_part,
 							 // volume/(FLOAT)nb_part, radius*v + center, VEC3(0,0,1), vel);
 							 volume/(FLOAT)nb_part, v + center, v.normalized(), vel);
-							 // volume/(FLOAT)nb_part, center, v.normalized(), vel);
 							particules.push_back(p);
-
 							if (random) {
 								randomRotation(rotation);
 							}
-
-							p->setAnisotropyValues(1, 1, 1);
-							p->setAnisotropyRotation(rotation);
-
+							if(mpm_conf::anisotropy_on)
+							{
+								p->setAnisotropyValues(1, 1, 1);
+								p->setAnisotropyRotation(rotation);
+							}
 						}
 
 					} else {

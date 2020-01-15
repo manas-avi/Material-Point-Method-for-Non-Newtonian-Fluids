@@ -7,3 +7,47 @@
 4) test_snow3 - test_snow1(X) + i.e. Only grid based density rather than using constant density
 
 5) test_snow4 - test_snow3 + w/o damping setting damping parameter to 0.0
+
+6) cuboid_snow - cuboidal snow at ground with sticky collision
+
+7) spherical_snow - spherical snow ball at ground with sticky collision
+
+8) spherical_snow1 - spherical snow ball at ground with sticky collision low friction (No visual change)
+
+9) bouncy1 - bouncy bouncy of radius 0.05
+
+10) bouncy2 - bouncy bouncy of radius 0.01 with coefficient of restitution 1
+# ideally cofficient of restitution should be zero and the ball should display this elastic collision based on the model that we are trying to simulate
+
+11) bouncy3 - bouncy bouncy of radius 0.01 with coefficient of restitution 0.4 without hardenning parameter
+	
+12) bouncy4 - bouncy bouncy of radius 0.01 with coefficient of restitution 0.4 without hardenning parameter
+without friction
+
+13) bouncy5 - bouncy bouncy of radius 0.01 with coefficient of restitution 0.0 without hardenning parameter
+without friction it was okay so i overwrite it with below one
+
+14) bouncy6 - bouncy bouncy of radius 0.01 with coefficient of restitution 0.4 without hardenning parameter
+with friction == 5 but still it went hayway....
+so don't use coefficient of restitution
+
+15) bouncy7 - bouncy bouncy of radius 0.01 with restitution 0.1 without hardenning parameter and with friction 5  and young modulus 3e+3 it bounces properly but since it is a stiff system it makes the system unstable
+
+16) bouncy8 - bouncy 7 + poison ratio 0.2 -> 0.3 => leads to very wierd behavior try this setting with smaller time step
+
+17) bouncy9 - bouncy 8 + smaller time step / 10 => stable then previous one but too slow time step discarding
+
+18) bouncy10 - bouncy 7 + smaller young modulus => interesting squeashy behavior
+
+19) bouncy11 - bouncy 10 + larger poisson ratio 0.2 -> 0.3 [@ 0.5(assertion failed) ] thus concluding increasing poisson ratio increases the squeashiness. 
+
+20) bouncy12 - bouncy 10 + smaller poisson ratio 0.2 -> 0.05 still much wobly 
+
+21) bouncy13 - bouncy 7 + slightly higher young modulus => tennis ball like behavior without compresssion at bottom
+
+22) bouncy14 - bouncy 13 + lower poison ratio (very energetic with restitution==0.1) so setting it to be 0 and rerunning => not enough squeashy
+
+22) bouncy15 - bouncy 7 + lower poison ratio + restitution = 0 and smaller young modulus
+
+23) bouncy16 - bouncy15 + faster time step (/2) => can see things in real time good enough for now
+

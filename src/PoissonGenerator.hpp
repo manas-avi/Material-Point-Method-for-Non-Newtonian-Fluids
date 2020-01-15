@@ -124,12 +124,6 @@ namespace PoissonGenerator
 			else
 				return false;
 		}
-		bool IsInCircle() const
-		{
-			VEC3 fv = v - VEC3(0.5, 0.5, 0.5);
-
-			return fv.squaredNorm() <= (FLOAT)0.25;
-		}
 	};
 
 	struct sGridPoint

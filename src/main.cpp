@@ -8,6 +8,7 @@ void help() {
 	std::cout<<"     -l, -load <file>: load configuration file"<<std::endl;
 	std::cout<<"     -s, -scene <file>: load scene from file"<<std::endl;
 	std::cout<<"     -e, -export <name>: export animation in a set of files <name><frame number>.obj"<<std::endl;
+	std::cout<<"     -m, -export <name>: export images in a set of files <name><frame number>.bmp"<<std::endl;
 	std::cout<<"     -i, -import <name>: import animation from a set of files <name><frame number>.obj"<<std::endl;
 	std::cout<<"     -stop <t>: stop animation and exit at time t"<<std::endl;
 	std::cout<<"     -es, -export_step <n>: export every n frames"<<std::endl;
@@ -53,6 +54,14 @@ int main(int argc, char **argv) {
 			}
 			std::cout<<"Exporting"<<" "<<argv[i+1]<<std::endl;
 			Scene::SCENE->setExport(argv[i+1]);
+			++i;
+		}  else if (s == "-m") {
+			if (argc < i + 2) {
+				std::cerr<<"\nERROR: wrong number of arguments\n"<<std::endl;
+				help();
+			}
+			std::cout<<"Exporting Img"<<" "<<argv[i+1]<<std::endl;
+			Scene::SCENE->setImage(argv[i+1]);
 			++i;
 		} else if (s == "-s" || s == "-scene") {
 			if (argc < i + 2) {
@@ -136,6 +145,14 @@ int main(int argc, char **argv) {
 			}
 			std::cout<<"Exporting"<<" "<<argv[i+1]<<std::endl;
 			sim->setExport(argv[i+1]);
+			++i;
+		} else if (s == "-m") {
+			if (argc < i + 2) {
+				std::cerr<<"\nERROR: wrong number of arguments\n"<<std::endl;
+				help();
+			}
+			std::cout<<"Exporting Img"<<" "<<argv[i+1]<<std::endl;
+			sim->setImg(argv[i+1]);
 			++i;
 		} else if (s == "-s" || s == "-scene") {
 			if (argc < i + 2) {

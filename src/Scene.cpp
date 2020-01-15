@@ -19,7 +19,6 @@
 #define MAX_STRING_LEN 4
 #include "common.h"
 
-
 using namespace glm;
 
 Scene* Scene::SCENE(new Scene("test", 2400, 1800));
@@ -33,7 +32,7 @@ Scene::Scene() {
 
 Scene::Scene(std::string titreFenetre, int largeurFenetre, int hauteurFenetre) :
 m_titreFenetre(titreFenetre), m_largeurFenetre(largeurFenetre),
-m_hauteurFenetre(hauteurFenetre), m_fenetre(0), m_contexteOpenGL(0), m_input() {
+m_hauteurFenetre(hauteurFenetre), m_window(0), m_contexteOpenGL(0), m_input() {
 }
 
 Scene::~Scene() {
@@ -54,12 +53,12 @@ Scene::~Scene() {
 	l_textures.clear();
 
 	SDL_GL_DeleteContext(m_contexteOpenGL);
-	SDL_DestroyWindow(m_fenetre);
+	SDL_DestroyWindow(m_window);
 	SDL_Quit();
 }
 
 bool Scene::initialiserFenetre() {
-		// Initialisation de la SDL
+	// Initialisation de la SDL
 	if (SDL_Init(SDL_INIT_VIDEO) < 0) {
 		std::cout << "Erreur lors de l'initialisation de la SDL : " << SDL_GetError() << std::endl;
 		SDL_Quit();
@@ -76,20 +75,20 @@ bool Scene::initialiserFenetre() {
 	std::cout<<"init buffer"<< std::endl;
 	
 		 // Création de la fenêtre
-	m_fenetre = SDL_CreateWindow(m_titreFenetre.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, m_largeurFenetre, m_hauteurFenetre, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
-	m_renderer = SDL_CreateRenderer( m_fenetre, -1, SDL_RENDERER_ACCELERATED);
+	m_window = SDL_CreateWindow(m_titreFenetre.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, m_largeurFenetre, m_hauteurFenetre, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
+	m_renderer = SDL_CreateRenderer( m_window, -1, SDL_RENDERER_ACCELERATED);
 
-	if (m_fenetre == 0) {
+	if (m_window == 0) {
 		std::cout << "Erreur lors de la creation de la fenetre : " << SDL_GetError() << std::endl;
 		SDL_Quit();
 		return false;
 	}
 
 		 // Création du contexte OpenGL
-	m_contexteOpenGL = SDL_GL_CreateContext(m_fenetre);
+	m_contexteOpenGL = SDL_GL_CreateContext(m_window);
 	if (m_contexteOpenGL == 0) {
 		std::cout << SDL_GetError() << std::endl;
-		SDL_DestroyWindow(m_fenetre);
+		SDL_DestroyWindow(m_window);
 		SDL_Quit();
 		return false;
 	}
@@ -103,7 +102,7 @@ bool Scene::initGL() {
 	if(initialisationGLEW != GLEW_OK) {
 		std::cout << "Erreur d'initialisation de GLEW : " << glewGetErrorString(initialisationGLEW) << std::endl;
 		SDL_GL_DeleteContext(m_contexteOpenGL);
-		SDL_DestroyWindow(m_fenetre);
+		SDL_DestroyWindow(m_window);
 		SDL_Quit();
 		return false;
 	}
@@ -112,19 +111,6 @@ bool Scene::initGL() {
 	// glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable( GL_DEPTH_TEST );
 	glDepthFunc(GL_LESS);
-
-	
-	// /* Init TTF. */
-	// if (TTF_Init()) {
-	//    fprintf(stderr, "error: cannot init ttf\n");
-	//       exit(EXIT_FAILURE);
-	// }
-	//   font = TTF_OpenFont("/home/cschreck/Documents/forest/poff/FreeSans.ttf", 60);
-	//   if (font == NULL) {
-	//       fprintf(stderr, "error: font not found\n");
-	//       exit(EXIT_FAILURE);
-	//   }
-
 	return true;
 }
 
@@ -156,20 +142,16 @@ void Scene::init() {
 		// 				 glm::vec3(0, 0, 0), // and looks at the origin
 		// 				 glm::vec3(0, 0, 1)  // Head is up (set to 0,-1,0 to look upside-down)
 	//);
-	m_camera = CameraObject(vec3(-1, 0.5, 0.3), vec3(0.4, 0.4, 0.2), vec3(0, 0, 1), 0.005, 0.005);
-		// m_input.afficherPointeur(false);
-		// m_input.capturerPointeur(true);
+	m_camera = CameraObject(vec3(-1.5, 0.5, 0.13), vec3(0.4, 0.5, 0.0), vec3(0, 0, 1), 0.005, 0.005); 
+	//curent eye followed by where am I looking followed by the up vector and then some parameters..
+	// m_camera = CameraObject(vec3(-1, 0.5, 0.3), vec3(0.4, 0.4, 0.2), vec3(0, 0, 1), 0.005, 0.005);
 	
-		// // Model matrix : an identity matrix (model will be at the origin)
-	//  m_model = glm::mat4(1.0f);
 	m_projection = glm::perspective(glm::radians(45.0f), (float) m_largeurFenetre/ (float) m_hauteurFenetre, 0.1f, 100.0f);
-		// // Our ModelViewProjection : multiplication of our 3 matrices
-		// glm::mat4 mvp = projection * view * model; 
+
 	m_frameRate = 1000 / 50;
 	m_debutBoucle = 0;
 	m_finBoucle = 0;
 	m_tempsEcoule = 0;
-
 	m_input_rate = 1000 / 10;
 	m_input_loop0 = 0;
 	m_input_loop1 = 0;
@@ -188,9 +170,6 @@ void Scene::init() {
 
 	sim = new Simulation(0);
 	l_objects.push_back(sim);
-
-	// Skybox *skybox = new Skybox(2);
-	// l_objects.push_back(skybox);
 }
 
 void Scene::animate() {
@@ -210,33 +189,10 @@ void Scene::animate() {
 }
 
 void Scene::draw() {
-	SDL_Color color;
-	SDL_Event event;
-	SDL_Rect rect;
-	SDL_Renderer *renderer;
-
-	/* initialize variables. */
-	color.r = 0;
-	color.g = 0;
-	color.b = 0;
-	color.a = COMMON_COLOR_MAX;
-	char text[MAX_STRING_LEN];
-
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
 	std::list<Object*>::iterator it;
-
-	 // SDL_SetRenderDrawColor(renderer, 255, 255, 255, 0);
-	 //   SDL_RenderClear(renderer);
-	 //   render_text(renderer, 0, 0,               "hello", font, &rect, &color);
-	 //   render_text(renderer, 0, rect.y + rect.h, "world", font, &rect, &color);
-	 //   snprintf(text, MAX_STRING_LEN, "%u", (unsigned int)(time(NULL) % 1000));
-	 //   render_text(renderer, 0, rect.y + rect.h, text, font, &rect, &color);
-	 //   SDL_RenderPresent(renderer);
-
-		 //     common_fps_update_and_print();
-
 	for (it = l_objects.begin(); it != l_objects.end(); ++it) {
 		(*it)->draw();
 	}
@@ -246,7 +202,6 @@ void Scene::draw() {
 void Scene::animationLoop() {
 	// keyboard and mouse input events are handled here
 	while(!end_) {
-		//INFO(3,"input");
 		m_input_loop0 = SDL_GetTicks();
 		m_input.updateEvenements(); //update current input state
 
@@ -277,12 +232,8 @@ void Scene::animationLoop() {
 			mpm_conf::display_sphere_ = !mpm_conf::display_sphere_;
 			if (mpm_conf::display_sphere_) {
 				INFO(1, "Display sphere");
-		//   QString text = QString("Display sphere");
-		//   displayMessage(text);
 			} else {
 				INFO(1, "Do not display sphere");
-		//   QString text = QString("Do not display sphere");
-		//   displayMessage(text);
 			}
 		}
 		if(m_input.getTouche(SDL_SCANCODE_EQUALS) ) {
@@ -294,9 +245,6 @@ void Scene::animationLoop() {
 				assert( mpm_conf::replay_speed_ == -1);
 				mpm_conf::replay_speed_ = 1;
 				INFO(1, "Speed x"<<mpm_conf::replay_speed_);
-	 // QString text = QString("Speed x");
-	 // text += QString::number(mpm_conf::replay_speed_);
-	 // displayMessage(text); 
 			}
 			INFO(1, "Speed x"<<mpm_conf::replay_speed_);
 		}
@@ -310,9 +258,6 @@ void Scene::animationLoop() {
 				mpm_conf::replay_speed_ = -1;
 			}
 			INFO(1, "Speed x"<<mpm_conf::replay_speed_);
-	 // QString text = QString("Speed x");
-	 // text += QString::number(mpm_conf::replay_speed_);
-	 // displayMessage(text); 
 		}
 		m_camera.deplacer(m_input); // move the camera based on the input 
 
@@ -329,7 +274,7 @@ void Scene::bouclePrincipale() { // main loop
 	sim->init();
 	FLOAT spacing =  mpm_conf::grid_spacing_;
 
-	
+	FLOAT time_elapsed = 0.0;
 	
 	while(!end_) {
 		m_debutBoucle = SDL_GetTicks();
@@ -353,20 +298,34 @@ void Scene::bouclePrincipale() { // main loop
 
 		Times::TIMES->tock(Times::total_time_);
 		if (running) {
-			INFO(2, "Times : simu "<<Times::TIMES->getTime(Times::simu_time_)
-				<<"   display "<<Times::TIMES->getTime(Times::display_time_)
-				<<"   total "<<Times::TIMES->getTime(Times::total_time_));
+			INFO(2, "   total_time_ "<< time_elapsed);
+			// INFO(2, "Times : simu "<< Times::TIMES->getTime(Times::simu_time_)
+			// 	<<"   display "<< Times::TIMES->getTime(Times::display_time_)
+			// 	<<"   total "<< Timem_windows::TIMES->getTime(Times::total_time_));
+			time_elapsed += (FLOAT)Times::TIMES->getTime(Times::total_time_);
 			Times::TIMES->next_loop();
 		}
-		SDL_GL_SwapWindow(m_fenetre);
+
+		if (t%mpm_conf::export_step_ == 0 and mpm_conf::save_img)
+		{
+			std::stringstream ss;
+		    ss << std::setw(4) << std::setfill('0') << t/mpm_conf::export_step_;
+		    std::string fnum = ss.str();
+			std::string str(image_path + ss.str() + ".png");
+			std::ofstream file(str.c_str());
+			ERROR(file.good(), "cannot open file \""<<str<<"\"", "");
+			INFO(1, "Exporting img \""<<str<<"\"");
+			std::cout << "the value is: " << saveScreenshotPNG(str) << std::endl;	\
+		}
+
+		// SDL_RenderPresent(m_renderer);
+		SDL_GL_SwapWindow(m_window);
 		m_finBoucle = SDL_GetTicks();
 		m_tempsEcoule = m_finBoucle - m_debutBoucle;
 		if(m_tempsEcoule < m_frameRate) {
 			SDL_Delay(m_frameRate - m_tempsEcoule);
 		}
-
 	}
-
 	t1.join();
 }
 
@@ -394,6 +353,11 @@ void Scene::setExport(std::string s) {
 	sim->setExport(s);
 }
 
+void Scene::setImage(std::string s) {
+	image_path = s;
+	mpm_conf::save_img = true;
+}
+
 void Scene::setImport(std::string s) {
 	sim->setImport(s);
 }
@@ -419,70 +383,18 @@ FLOAT Scene::getTime() {
 	return t*mpm_conf::dt_;
 }
 
-bool saveScreenshotBMP(std::string filepath, SDL_Window* SDLWindow, SDL_Renderer* SDLRenderer) {
-	SDL_Surface* saveSurface = NULL;
-	SDL_Surface* infoSurface = NULL;
-	infoSurface = SDL_GetWindowSurface(SDLWindow);
-	if (infoSurface == NULL) {
-		std::cerr << "Failed to create info surface from window in saveScreenshotBMP(string), SDL_GetError() - " << SDL_GetError() << "\n";
-	} else {
-		unsigned char * pixels = new (std::nothrow) unsigned char[infoSurface->w * infoSurface->h * infoSurface->format->BytesPerPixel];
-		if (pixels == 0) {
-			std::cerr << "Unable to allocate memory for screenshot pixel data buffer!\n";
-			return false;
-		} else {
-			if (SDL_RenderReadPixels(SDLRenderer, &infoSurface->clip_rect, infoSurface->format->format, pixels, infoSurface->w * infoSurface->format->BytesPerPixel) != 0) {
-				std::cerr << "Failed to read pixel data from SDL_Renderer object. SDL_GetError() - " << SDL_GetError() << "\n";
-				pixels = NULL;
-				return false;
-			} else {
-				saveSurface = SDL_CreateRGBSurfaceFrom(pixels, infoSurface->w, infoSurface->h, infoSurface->format->BitsPerPixel, infoSurface->w * infoSurface->format->BytesPerPixel, infoSurface->format->Rmask, infoSurface->format->Gmask, infoSurface->format->Bmask, infoSurface->format->Amask);
-				if (saveSurface == NULL) {
-					std::cerr << "Couldn't create SDL_Surface from renderer pixel data. SDL_GetError() - " << SDL_GetError() << "\n";
-					return false;
-				}
-				SDL_SaveBMP(saveSurface, filepath.c_str());
-				SDL_FreeSurface(saveSurface);
-				saveSurface = NULL;
-			}
-			delete[] pixels;
-		}
-		SDL_FreeSurface(infoSurface);
-		infoSurface = NULL;
-	}
+bool Scene::saveScreenshotPNG(std::string filepath) {
+	// some hack to display the current results
+	// unsigned char* image = (unsigned char*)malloc(sizeof(unsigned char) * 3 * m_largeurFenetre * m_hauteurFenetre);
+	BYTE* image = new  BYTE[m_largeurFenetre * m_hauteurFenetre/2 * 3];
+	glReadPixels(0, m_hauteurFenetre/2, m_largeurFenetre, m_hauteurFenetre/2, GL_BGR, GL_UNSIGNED_BYTE, image);
+	// Convert to FreeImage format & save to file
+	FIBITMAP* img = FreeImage_ConvertFromRawBits(image, m_largeurFenetre, m_hauteurFenetre/2, 3 * m_largeurFenetre, 24, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK, false);
+	// FIBITMAP* img = FreeImage_ConvertFromRawBits(image, m_largeurFenetre, m_hauteurFenetre, 3 , 8, 0xFF0000, 0x00FF00, 0x0000FF, false);
+	FreeImage_Save(FIF_PNG, img, filepath.c_str(), 0);
+	// Free resources
+	FreeImage_Unload(img);
+	delete [] image;
 	return true;
 }
-
-
-
-// /*
-// - x, y: upper left corner of string
-// - rect output Width and height contain rendered dimensions.
-// */
-// void render_text(
-//     SDL_Renderer *renderer,
-//     int x,
-//     int y,
-//     const char *text,
-//     TTF_Font *font,
-//     SDL_Rect *rect,
-//     SDL_Color *color
-// ) {
-//     SDL_Surface *surface;
-//     SDL_Texture *texture;
-
-//     surface = TTF_RenderText_Solid(font, text, *color);
-//     texture = SDL_CreateTextureFromSurface(renderer, surface);
-//     rect->x = x;
-//     rect->y = y;
-//     rect->w = surface->w;
-//     rect->h = surface->h;
-//     /* This is wasteful for textures that stay the same.
-//      * But makes things less stateful and easier to use.
-//      * Not going to code an atlas solution here... are we? */
-//     SDL_FreeSurface(surface);
-//     SDL_RenderCopy(renderer, texture, NULL, rect);
-//     SDL_DestroyTexture(texture);
-// }
-
 #endif

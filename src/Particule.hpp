@@ -64,7 +64,7 @@ private :
 
   MAT3 orientation;
   
- mutable MAT3 forceIncrement;
+  mutable MAT3 forceIncrement;
   VEC3 energy_der;
   Tensor energy_second_der;
 

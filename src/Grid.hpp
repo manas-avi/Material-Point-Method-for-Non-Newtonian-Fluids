@@ -65,9 +65,10 @@ public :
   void gridToParticules(std::vector<Particule*> & particules);
 
 
-  void initCollision(Obstacle *ob);
+  // void initCollision(Obstacle *ob);
+  // void collision(Obstacle *ob);
+  // using all the obstacles increases the speed
   void initCollision(std::list<Obstacle*> obstacles);
-  void collision(Obstacle *ob);
   void collision(std::list<Obstacle*> obstacles);
     
   MAT3 secondDer(uint i, uint j, std::vector<Particule*> & particules);

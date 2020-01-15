@@ -333,25 +333,6 @@ FLOAT Particule::weight(Vector3i node) {
 			break;
 		}
 	}
-	
-	// a different implementation of the same thing
-	// FLOAT w_temp = 1;
-	// VEC3 u;
-	// for (uint i = 0; i < 3; ++i) {
-		// u(i) = pos(i) - mpm_conf::grid_spacing_*node(i);
-	// }
-	// for (uint i = 0; i < 3; ++i) {
-	// 	FLOAT ux = u(i)/mpm_conf::grid_spacing_;
-	// 	if (fabs(ux) > 2) {
-	// 		w_temp = 0;
-	// 	} else if (fabs(ux) > 1) {
-	// 		w_temp *= 1.0/6.0*pow(2 - fabs(ux), 3);
-	// 	} else {
-	// 		w_temp *= 0.5*pow(fabs(ux), 3) - pow(fabs(ux), 2) +2.0/3.0;
-	// 	}
-	// }
-	// INFO(3, w - w_temp );
-
 	return w;
 }
 
@@ -387,47 +368,15 @@ VEC3 Particule::gradWeight(Vector3i node) {
 		IS_DEF(gradn(i));
 	}
 	return 1.0/mpm_conf::grid_spacing_*VEC3(gradn(0)*n(1)*n(2), gradn(1)*n(0)*n(2), gradn(2)*n(1)*n(0));
-	
-
-	// different imlpementation to do the same thing
-	// VEC3 n(0, 0, 0);
-	// VEC3 gradn(0, 0, 0);
-	// for (uint i = 0; i < 3; ++i) {
-	//   if (cell(i) == node(i) || cell(i) == node(i) - 1) {
-	//     FLOAT x = pos(i)/mpm_conf::grid_spacing_ - node(i);
-	//     FLOAT absx = fabs(x);
-	//     //     INFO(3,"absx "<<(pos(i) - node(i)*mpm_conf::grid_spacing_)/mpm_conf::grid_spacing_<<" "<<absx);
-	//     // INFO(3,"absx "<<x<<" "<<pos(i)/mpm_conf::grid_spacing_);
-	//     FLOAT sgnx = 1;
-	//     if (cell(i) < node(i)) {
-	// 	sgnx = -1;
-	//     }
-	//     n(i) = 0.5*pow(absx, 3) - pow(absx, 2) + 2.0/3.0;      
-	//     gradn(i) = 1.5*sgnx*pow(absx, 2) - 2.0*x;
-	//   } else if (cell(i) == node(i) + 1 || cell(i) == node(i) - 2) {
-	//     FLOAT x = pos(i)/mpm_conf::grid_spacing_ - node(i);
-	//     FLOAT absx = fabs(x);
-	//     FLOAT sgnx = 1;
-	//     if (cell(i) < node(i)) {
-	// 	sgnx = -1;
-	//     }
-	//     n(i) = 1.0/6.0*pow(2 - absx, 3);
-	//     gradn(i) = -0.5*sgnx*pow(2 - absx, 2);
-	//   } else {
-	//     break;
-	//     // n(i) = 0;
-	//     // gradn(i) = 0;
-	//   }
-	// }
-
-	//return VEC3(gradn(0)*n(1)*n(2), gradn(1)*n(0)*n(2), gradn(2)*n(1)*n(0)); 
 }
 
 void Particule::update(VEC3 & p, VEC3 & v, MAT3 & b, MAT3 & t) {
 	IS_DEF(t(0, 0));
 
-	// TODO SOMETHING IS FISHY HERE
-	if (mpm_conf::method_ == mpm_conf::apic_) {
+	// INFO(3, "pos" << this->pos);
+	// exit(1);
+
+	if (mpm_conf::method_ == mpm_conf::apic_ || mpm_conf::method_ == mpm_conf::pic_) {
 		pos = p;
 	} else {
 		pos += mpm_conf::dt_*v;
@@ -437,22 +386,17 @@ void Particule::update(VEC3 & p, VEC3 & v, MAT3 & b, MAT3 & t) {
 	IS_DEF(pos(1));
 	IS_DEF(pos(2));
 
-	 // /***** TEST ****/
-	//  rotation = MAT3::Identity();
-
-		//   INFO(3, F_e);
-	
-		// INFO(3, "vel prev\n"<<vel);
-		// INFO(3, "vel new\n"<<v);
+	// update the velocity and affine matrix
+	vel = v;
+	B = b;
 
 	// TODO 
 	// UPDATE DEFORMATION GRADIENT result is stored in forceIncrement
 	// THIS SECTION WILL DEPEND ON WHAT CONSTITUTIVE MODEL IS ONE USING
 
-	vel = v;
 	FLOAT h = mpm_conf::grid_spacing_;
 	cell = Vector3i((int)(pos(0)/h), (int)(pos(1)/h), (int)(pos(2)/h));
-	B = b;
+
 	F_e *= (MAT3::Identity() + mpm_conf::dt_*t);
 	//volume correction
 	vp += log(F_e.determinant());
@@ -461,7 +405,7 @@ void Particule::update(VEC3 & p, VEC3 & v, MAT3 & b, MAT3 & t) {
 	if (std::isnan(F_e(0, 0)) || std::isinf(F_e(0,0))) {
 		F_e = MAT3::Identity();
 	}
-	MAT3 isoF = F_e;
+	MAT3 isoF = F_e; // since it passsed by reference to the eigen function so it is better to just protect it
 	MAT3 skewF;
 	
 	if (mpm_conf::anisotropy_on) {
@@ -478,8 +422,6 @@ void Particule::update(VEC3 & p, VEC3 & v, MAT3 & b, MAT3 & t) {
 	VEC3 T(0, 0, 0);
 	VEC3 sigma = svd.singularValues();
 	MAT3 der = MAT3::Zero();
-
-	//INFO(3,"sigma"<<sigma(0)<<" "<<sigma(1)<<" "<<sigma(2));
 
 	if (std::isnan(sigma(0)) || std::isinf(sigma(0))) {
 		INFO(1, "check if something is blowing up")
@@ -530,6 +472,8 @@ void Particule::update(VEC3 & p, VEC3 & v, MAT3 & b, MAT3 & t) {
 			fric_angle = fric_angle*M_PI/180; //convert radian
 			alpha = sqrt(2.0/3.0)*(2*sin(fric_angle))/(3-sin(fric_angle));
 		} else if (mpm_conf::plastic_mode_ == 1) {
+			// this is for snow the alpha terms that is 
+			// multiplied to the lame parameters
 			alpha = exp(mpm_conf::hardenning_param_(3)*(1-det_Fp));
 		}
 		IS_DEF(rotation(0,0));
@@ -620,58 +564,201 @@ void Particule::computeEnergyDerivative(VEC3 sigma) {
 }
 
 MAT3 Particule::linearElasticity() {
+
+	int method = mpm_conf::elastic_method_;
 	
-	MAT3 rotF = rotation.transpose()*(F_e)*rotation;
-	MAT3 symF = 0.5*(rotF + rotF.transpose());
-	MAT3 isoF = symF -  MAT3::Identity();
-	if (mpm_conf::anisotropy_on) {
-		isoF = innerProduct(anisotropy_strain, symF) - innerProduct(anisotropy_strain,  MAT3::Identity());
+	// NOTE trying something new --->
+	if (method == 0) { //NeoHookean Model
+
+		MAT3 F_e_n = F_e;
+		// MAT3 symF = F_e_n*F_e_n.transpose() / F_e_n.determinant(); // try this as symF
+		FLOAT E = mpm_conf::young_modulus_;
+		FLOAT nu = mpm_conf::poisson_;
+
+		float mu = E / ((float)2 * ((float)1 + nu));
+	    float lambda = E * nu / (((float)1 + nu) * ((float)1 - ((float)2*nu)));
+
+		JacobiSVD<MATX> svd(F_e_n, ComputeThinU | ComputeThinV);
+		MAT3 U = svd.matrixU();
+		MAT3 V = svd.matrixV();
+
+	    MAT3 R = U*V.transpose(); // can be removed
+	    float J = F_e_n.determinant();
+	    MAT3 out = (mu * (F_e_n - F_e_n.transpose().inverse())) + (lambda * log(J) * F_e_n.transpose().inverse());
+	    return out;
 	}
-	//  rotF = isoF;//0.5*(isoF + isoF.transpose());
-	
-	//INFO(3, "\nrot F\n"<<rotF<<"\n\n"<<isoF);
-	VECX strain(6);
-	VECX stress(6);
 
-	strain(0) = isoF(0, 0);
-	strain(1) = isoF(1, 1);
-	strain(2) = isoF(2, 2);
-	strain(3) = isoF(1, 2);
-	strain(4) = isoF(0, 2);
-	strain(5) = isoF(0, 1);
-	 
-	stress = mpm_conf::tangent_stiffness_iso * strain;
- 
-	
-	MAT3 sigma;
-	sigma << stress(0), stress(5), stress(4),
-		stress(5), stress(1), stress(3),
-		stress(4), stress(3), stress(2);
+	else if (method == 1) { // St Vernant Model
+		MAT3 F_e_n = F_e;
+		// MAT3 symF = F_e_n*F_e_n.transpose() / F_e_n.determinant(); // try this as symF
+		FLOAT E = mpm_conf::young_modulus_;
+		FLOAT nu = mpm_conf::poisson_;
 
-	for (uint i = 0; i < 3; ++i) {
-		for (uint j = 0; j < 3; ++j) {
-			IS_DEF(sigma(i, j));
-			if (fabs(sigma(i, j)) < 1e-100) {
-	sigma(i, j) = 0;
+		float mu = E / ((float)2 * ((float)1 + nu));
+	    float lambda = E * nu / (((float)1 + nu) * ((float)1 - ((float)2*nu)));
+
+		JacobiSVD<MATX> svd(F_e_n, ComputeThinU | ComputeThinV);
+		MAT3 U = svd.matrixU();
+		MAT3 V = svd.matrixV();
+		VEC3 sigma_vec = svd.singularValues();
+
+		MAT3 sigma = MAT3::Zero();
+		MAT3 logSigma = MAT3::Zero();
+		for (int i = 0; i < 3; ++i) {
+			sigma(i,i) = sigma_vec(i);
+		    logSigma(i,i) = log(sigma_vec(i));
+		}
+
+		MAT3 out = (2 * mu * logSigma * sigma.inverse()) + (lambda * logSigma.trace() * sigma.inverse()); //calculate singular value view of piola
+		out = U * out * V.transpose();
+		return out;
+	}
+	else if (method == 2) { // Corotated Piola Model
+		MAT3 F_e_n = F_e;
+		// MAT3 symF = F_e_n*F_e_n.transpose() / F_e_n.determinant(); // try this as symF
+		FLOAT E = mpm_conf::young_modulus_;
+		FLOAT nu = mpm_conf::poisson_;
+
+		float mu = E / ((float)2 * ((float)1 + nu));
+	    float lambda = E * nu / (((float)1 + nu) * ((float)1 - ((float)2*nu)));
+
+		JacobiSVD<MATX> svd(F_e_n, ComputeThinU | ComputeThinV);
+		MAT3 U = svd.matrixU();
+		MAT3 V = svd.matrixV();
+		VEC3 sigma_vec = svd.singularValues();
+
+		MAT3 R = U * V.transpose();
+
+		FLOAT J = F_e_n.determinant();
+
+		MAT3 out = (2 * mu * (F_e_n - R)) + (lambda * (J-1) * J * (F_e_n.transpose().inverse()));
+		return out;
+	}
+
+	else if (method == 4) { // snow approx
+
+
+		MAT3 F_e_n = F_e;
+		// MAT3 symF = F_e_n*F_e_n.transpose() / F_e_n.determinant(); // try this as symF
+		FLOAT E = mpm_conf::young_modulus_;
+		FLOAT nu = mpm_conf::poisson_;
+
+		float mu = E / ((float)2 * ((float)1 + nu));
+	    float lambda = E * nu / (((float)1 + nu) * ((float)1 - ((float)2*nu)));
+
+		JacobiSVD<MATX> svd(F_e_n, ComputeThinU | ComputeThinV);
+		MAT3 U = svd.matrixU();
+		MAT3 V = svd.matrixV();
+		VEC3 sigma = svd.singularValues(); // remember it is a vector
+
+		// clamp singular values and store in T vector
+		VEC3 T(0, 0, 0);
+		MAT3 sigma_m = MAT3::Zero();
+		double smax = mpm_conf::stretch_max(0);//1 + 7.5e-3;
+		double smin = mpm_conf::stretch_min(0);//1 - 2.5e-2;
+		for (uint i = 0; i < 3; ++i) {
+			sigma_m(i,i) = sigma(i);
+			T(i) = sigma(i);
+			if (sigma(i) < smin) {
+				T(i) = smin;
+			} else if (sigma(i) > smax) {
+				T(i) = smax;
 			}
 		}
-	}
-	// sigma = sigma*rotF.transpose();
-	// INFO(3, "\nsigma\n"<<sigma);
-	// INFO(3, "\nsigma rotated back\n"<<rotation.transpose()*sigma*rotation);
-	// Tensor inv_anisotropy_stress;
-	// for (uint i = 0; i < 3; ++i) {
-	//   for (uint j = 0; j < 3; ++j) {
-	//     inv_anisotropy_stress(i, j, i, j) = 1.0/mpm_conf::anisotropy_values_(i);
-	//   }
-	// }
 
-	MAT3 out = rotation*sigma*rotation.transpose();
-	if (mpm_conf::anisotropy_on) {
-		MAT3 anis_sigma = innerProduct(inv_anisotropy_stress, sigma);
-		out = rotation*anis_sigma*rotation.transpose();
+		// computer new determinants of Fe and Fp
+		FLOAT det_Fe = T(0)*T(1)*T(2); // this det_Fe is of new F_e
+		if (std::isnan(det_Fe) || std::isinf(det_Fe)) {
+			det_Fe = 1;
+		}
+		IS_DEF(det_Fe);
+
+		FLOAT det_Fp = 1;
+		MAT3 inv_T = MAT3::Zero();
+		for (uint i = 0; i < 3; ++i) {
+			TEST(T(i) != 0);
+			if (T(i) != 0) {
+				inv_T(i, i) = 1.0/T(i);
+				det_Fp *= sigma(i)*inv_T(i, i);
+			} else {
+				det_Fp = 1;
+			}
+		}
+
+		// compute snow energy derivative
+	    float snow_alpha = exp(mpm_conf::hardenning_param_(3)*(1-det_Fp));
+		IS_DEF(snow_alpha);
+
+		// obtain the energy derivative
+		VEC3 snow_energy_der = VEC3::Zero();
+		for (uint i = 0; i < 3; ++i) {
+			// I am not sure about the second term how is it obtained
+			snow_energy_der(i) = 2*mu*alpha*(sigma(i)-1) + lambda*alpha*sigma((i+1)%3)*sigma((i+2)%3)*(det_Fe -1);
+			if (std::isnan(snow_energy_der(i)) || std::isinf(snow_energy_der(i))) {
+				snow_energy_der(i) = 0;
+			}
+			IS_DEF(snow_energy_der(i));
+		}
+
+		// obtain computation matrices
+		MAT3 der = MAT3::Zero();
+		MAT3 T_m = MAT3::Zero();
+		for (uint i = 0; i < 3; ++i) {
+			T_m(i, i) = T(i);
+			der(i, i) = snow_energy_der(i);
+			 if (T(i) < 1e-10) {
+				 T(i) = 0;
+			 }
+		 }
+
+		// update the F_e and F_p matrices and return the updated force
+		F_e = U*(T_m)*V.transpose();
+		F_p = V*inv_T*sigma_m*V.transpose()*F_p;
+		MAT3 out = U*der*V.transpose()*F_e.transpose() / F_e.determinant();
+	    return out;
 	}
-	return out;
+
+
+	else { //method 3 // cameille;s method
+
+		MAT3 rotF = rotation.transpose()*(F_e)*rotation;
+		MAT3 symF = 0.5*(rotF + rotF.transpose());
+		MAT3 isoF = symF -  MAT3::Identity();
+		if (mpm_conf::anisotropy_on) {
+			isoF = innerProduct(anisotropy_strain, symF) - innerProduct(anisotropy_strain,  MAT3::Identity());
+		}
+		VECX strain(6);
+		VECX stress(6);
+
+		strain(0) = isoF(0, 0);
+		strain(1) = isoF(1, 1);
+		strain(2) = isoF(2, 2);
+		strain(3) = isoF(1, 2);
+		strain(4) = isoF(0, 2);
+		strain(5) = isoF(0, 1);
+		 
+		stress = mpm_conf::tangent_stiffness_iso * strain;
+		
+		MAT3 sigma;
+		sigma << stress(0), stress(5), stress(4),
+			stress(5), stress(1), stress(3),
+			stress(4), stress(3), stress(2);
+
+		for (uint i = 0; i < 3; ++i) {
+			for (uint j = 0; j < 3; ++j) {
+				IS_DEF(sigma(i, j));
+				if (fabs(sigma(i, j)) < 1e-100) {
+					sigma(i, j) = 0;
+				}
+			}
+		}
+		MAT3 out = rotation*sigma*rotation.transpose();
+		if (mpm_conf::anisotropy_on) {
+			MAT3 anis_sigma = innerProduct(inv_anisotropy_stress, sigma);
+			out = rotation*anis_sigma*rotation.transpose();
+		}
+		return out;
+	}
 }
 
 
@@ -745,7 +832,7 @@ void Particule::project(VEC3 sigma, VEC3 & T) {
 			// } else {
 			T(i) = sigma(i);
 			//}
-	 }
+		 }
 	
 		 FLOAT diff = T(1) - T(2) - smax;
 		 if (diff > 0) {
@@ -756,15 +843,15 @@ void Particule::project(VEC3 sigma, VEC3 & T) {
 	 
 		diff = T(0) - T(1) - smax;
 		if (diff > 0) {
-		 //     //T(1) = sigma(1) - diff;
-		 T(0) = T(0) - diff/2.0;
-		 T(1) = T(1) + diff/2.0;
+			//     //T(1) = sigma(1) - diff;
+			T(0) = T(0) - diff/2.0;
+			T(1) = T(1) + diff/2.0;
 		}
 		diff = T(0) - T(2) - smax;
 		if (diff > 0) {
-		 //     //T(1) = sigma(1) - diff;
-		 T(0) = T(0) - diff/2.0;
-		 T(2) = T(2) + diff/2.0;
+			//     //T(1) = sigma(1) - diff;
+			T(0) = T(0) - diff/2.0;
+			T(2) = T(2) + diff/2.0;
 		}
 	}
 }

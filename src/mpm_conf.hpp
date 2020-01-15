@@ -47,12 +47,14 @@ namespace mpm_conf {
   extern FLOAT density_; //kg/m^3 
 
   extern FLOAT friction_coef_;
+  extern FLOAT rest_coeff_;
 
   extern bool display_sphere_;
   extern int replay_speed_;
 
   extern unsigned int plastic_mode_; //0 drucker_prager (sand), 1 clamp eigenvalues (snow), 2 clamp diff between eigenvalues, 3 no plasticity
   extern unsigned int elastic_mode_; //0 sand, 1 snow, 2 linear
+  extern unsigned int elastic_method_; //0 sand, 1 snow, 2 linear
   // extern bool plastic_anisotropy_;
   // extern bool elastic_anisotropy_;
   extern bool anisotropy_on;
@@ -82,6 +84,7 @@ namespace mpm_conf {
 
   extern uint method_; //0 apic, 1 pic, 2 flip, 3 0.05*pic+0.95*flip
   extern bool implicit_;
+  extern bool save_img;
   
   extern uint export_step_; //export particules every x steps 
   void loadConf(std::string file);

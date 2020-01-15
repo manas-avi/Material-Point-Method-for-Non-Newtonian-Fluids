@@ -13,4 +13,4 @@ export OMP_WAIT_POLICY=active
 export OMP_DYNAMIC=false
 export OMP_PROC_BIND=true
 
-./poff -l material/snow0.conf -s scenes/column0.sc -i cuboid_snow/test -r 
+./poff -l material/bouncy.conf -s scenes/falling_sphere.sc -i results/bouncy4/test -r 

@@ -12,7 +12,7 @@
  <sphere> 
   <radius> 0.04
   <center> 0.5 0.5 0.5
-  <nb particules> 10000
+  <nb particules> 1000
   <velocity> 0 0 -1
  </sphere>
 </particules>

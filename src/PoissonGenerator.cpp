@@ -143,10 +143,7 @@ std::list<VEC3> PoissonGenerator::GeneratePoissonPointsC(size_t NumPoints,
 	sGrid Grid( GridW, GridH, GridT, CellSize );
 
 	sPoint FirstPoint;
-	int count = 0;
 	do {
-		std::cout << count << std::endl;
-		count++;
 		FirstPoint = sPoint( Generator.RandomFloat(), Generator.RandomFloat(), Generator.RandomFloat() );	     
 	} while (!FirstPoint.IsInSphere(SphereSize));
 
@@ -155,10 +152,8 @@ std::list<VEC3> PoissonGenerator::GeneratePoissonPointsC(size_t NumPoints,
 	SamplePoints.push_back( FirstPoint );
 	Grid.Insert( FirstPoint );
 
-	printf("Cross this part\n");
 
 	// generate new points for each point in the queue
-	count = 0;
 	while ( !ProcessList.empty() && SamplePoints.size() < NumPoints )
 	{
 		#if POISSON_PROGRESS_INDICATOR
@@ -179,8 +174,6 @@ std::list<VEC3> PoissonGenerator::GeneratePoissonPointsC(size_t NumPoints,
 				continue;
 			}
 		}
-		count++;
-		std::cout << count << std:: endl;
 	}
 	std::list<VEC3> out;
 	for (auto &p : SamplePoints) {
