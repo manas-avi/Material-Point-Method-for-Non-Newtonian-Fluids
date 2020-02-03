@@ -10,11 +10,11 @@
 </obstacles>
 <particules>
  <obj>
-  <scale> 0.3
+  <scale> 1.0
   <center> 0.5 0.5 0.5
   <xangle> 90
   <yangle> -90
-  <file> models/sparseDragonTranslated.obj
+  <file> models/bunny.obj
   <velocity> 0 0 -5
  </obj>
 </particules>

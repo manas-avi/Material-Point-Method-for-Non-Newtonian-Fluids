@@ -738,8 +738,8 @@ MAT3 Particule::linearElasticity() {
 
 	    MAT3 s_np1_pre = sm * dev_be_hat; // the deviatoric part of stress tensor
 	    FLOAT s_np1_pre_mag = s_np1_pre.norm();
-	    // if (false)
-	    if (s_np1_pre_mag > sqrt(2.0/3.0)*sy)
+	    if (false)
+	    // if (s_np1_pre_mag > sqrt(2.0/3.0)*sy)
 	    {
 	    	FLOAT eta = mpm_conf::eta_; // viscocity parameter
 	    	FLOAT h =  mpm_conf::hb_;
@@ -756,6 +756,7 @@ MAT3 Particule::linearElasticity() {
     		assert( not ((rhs<0 and lhs<0) or (rhs>0 and lhs>0)) );
     		// std::cout << "rhs is " << sol_r << " lhs is " << sol_l << "\n";
     		// std::cout << "rhs is " << rhs << " lhs is " << lhs << "\n";
+    		int num_iter = 0;
 	    	while ( error > 1e-6)
 	    	{
 	    		FLOAT sol_m = (sol_l + sol_r)/2;
@@ -767,6 +768,12 @@ MAT3 Particule::linearElasticity() {
 	    		else {
 	    			sol_r = sol_m;
 	    			error = fabs(sol_l - sol_r);	
+	    		}
+	    		num_iter++;
+	    		if (num_iter > 1000){
+	    			sol_l = s_np1_pre_mag;
+	    			sol_r = s_np1_pre_mag;
+	    			printf("Exceeding iteraitons %d\n", num_iter);
 	    		}
 	    	}
 	    	FLOAT s_np1_mag = (sol_l + sol_r)/2; // this is just the magnitude

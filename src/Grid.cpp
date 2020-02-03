@@ -395,9 +395,6 @@ void Grid::particulesToGrid(std::vector<Particule*> & particules) {
 	// INFO(2, "Part 2 Grid");
 	// INFO(3, particules.front()->getVelocity());
 	FLOAT s2 = mpm_conf::grid_spacing_*mpm_conf::grid_spacing_; 
-
-	// ///////////////////? SOMETHING IS WRONG WITH PARTICLES FIX ITTTT !!!
-
 	// grid spacing square used in D matrix for apic based calculations
 
 	#pragma omp parallel for
@@ -518,8 +515,11 @@ void Grid::gridToParticules(std::vector<Particule*> & particules) {
 	// MatrixXd D = es.pseudoEigenvalueMatrix();
 	// MatrixXd V = es.pseudoEigenvectors();
 	// INFO(3, "ORIENTATION\n"<<V<<"\n\n"<<D);
-
 	// INFO(2, "Grid 2 Part");
+
+	removeEscapedParticles(particules);
+	checkParticles(particules);
+
 	FLOAT s3 = pow(mpm_conf::grid_spacing_, 3);
 	//for (auto& p : particules) {
 

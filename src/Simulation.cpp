@@ -728,6 +728,8 @@ void Simulation::loadScene() {
 						VEC3 center(0, 0, 0);
 						uint nb_part;
 						FLOAT scale = 1;
+						FLOAT xangle = 0;
+						FLOAT yangle = 0;
 						std::string obj_filename;
 						VEC3 vel(0, 0, 0);
 						getline(file, line);
@@ -740,7 +742,15 @@ void Simulation::loadScene() {
 							} else  if (line.substr(0,9) == "  <scale>") {
 								std::istringstream s(line.substr(9));
 								s >> scale;
-							}  else if (line.substr(0,8) == "  <file>") {
+							} else  if (line.substr(0,10) == "  <xangle>") {
+								std::istringstream s(line.substr(10));
+								s >> xangle;
+								xangle = xangle * M_PI/180;
+							} else  if (line.substr(0,10) == "  <yangle>") {
+								std::istringstream s(line.substr(10));
+								s >> yangle;
+								yangle = yangle * M_PI/180;
+							} else if (line.substr(0,8) == "  <file>") {
 								std::istringstream s(line.substr(8));
 								s >> obj_filename;
 							} else if (line.substr(0,12) == "  <velocity>") {
@@ -772,21 +782,27 @@ void Simulation::loadScene() {
 						            //TODO assert data
 						            //assert(thisXp(i) > 0 && thisXp(i) < 1);
 						        }
+							    points.push_back(thisXp);
 						    }
-						    points.push_back(thisXp);
 						}
-						// FLOAT volume = 4.0/3.0*M_PI*pow(radius, 3);
-						FLOAT volume = pow(scale,3);
-						// PoissonGenerator::PRNG prng;
-						// std::list<VEC3> points = PoissonGenerator::GeneratePoissonPointsC(nb_part, prng,
-						//  30, radius);
+						FLOAT volume = 0.001*pow(scale,3);
 						nb_part = points.size();
 						std::cout << "Number of particles : " << nb_part << std::endl; 
+						VEC3 com = VEC3(0,0,0);
+						for (auto &v: points) {
+							com = com + v/ nb_part;
+						}
 						for (auto &v: points) {
 							float mag = vel.norm();
 							VEC3 norm_direc = VEC3(0, 0, 1);
+							// since things are a bit twisted about x-y axis so we have to rotate the object
+							Eigen::AngleAxisd rot_mat1(xangle, Eigen::Vector3d::UnitX());
+							Eigen::AngleAxisd rot_mat2(yangle, Eigen::Vector3d::UnitY());
+							MAT3 rotationMatrix = rot_mat1.matrix() * rot_mat2.matrix();
+							v = rotationMatrix * (v-com);
+							v = v*scale  + center;
 							Particule *p = new Particule(volume*mpm_conf::density_/(FLOAT)nb_part,
-							volume/(FLOAT)nb_part, v + center, norm_direc, vel);
+							volume/(FLOAT)nb_part, v, norm_direc, vel);
 							particules.push_back(p);
 							if (random) {
 								randomRotation(rotation);
@@ -805,7 +821,7 @@ void Simulation::loadScene() {
 				}
 				getline(file, line);	
 			}
-	 //end particules
+		//end particules
 		} else {
 			std::cerr<<"Line not recognized in file \""<<scene_path<<"\": "<<line<<std::endl;
 			exit(-1);
