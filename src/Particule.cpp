@@ -8,6 +8,7 @@
 #include "Cube.hpp"
 
 #include <iostream>
+#include<algorithm> 
 
 Particule::Particule(int shader) : Object(shader) {
 	pos = VEC3(0, 0, 0);
@@ -121,14 +122,14 @@ void Particule::draw(glm::mat4 m, int s) {
 	//   m_model_view = cur_model;
 		
 		
-	//   float vertices[18] = {-0.0825, -0.1155, 0,   0.0825, -0.1155, 0,   0.0825, 0.1155, 0, 
+	//   FLOAT vertices[18] = {-0.0825, -0.1155, 0,   0.0825, -0.1155, 0,   0.0825, 0.1155, 0, 
 	// 			  -0.0825, -0.1155, 0,   -0.0825, 0.1155, 0,   0.0825, 0.1155, 0};
-	//   float coordTexture[12] =  {0, 0,   1, 0,   1, 1,
+	//   FLOAT coordTexture[12] =  {0, 0,   1, 0,   1, 1,
 	//    			     1, 1,   0, 1,   0, 0};
-	//   float normals[18] =  {0.0, 0.0, -1.0,   0.0, 0.0, -1.0,   0.0, 0.0, -1.0, 
+	//   FLOAT normals[18] =  {0.0, 0.0, -1.0,   0.0, 0.0, -1.0,   0.0, 0.0, -1.0, 
 	// 			  0.0, 0.0, -1.0,   0.0, 0.0, -1.0,   0.0, 0.0, -1.0};
 
-	//   float couleurs[18] = {1.0, 1.0, 1.0,   1.0, 1.0, 1.0,   1.0, 1.0, 1.0,
+	//   FLOAT couleurs[18] = {1.0, 1.0, 1.0,   1.0, 1.0, 1.0,   1.0, 1.0, 1.0,
 	// 			  1.0, 1.0, 1.0,   1.0, 1.0, 1.0,   1.0, 1.0, 1.0};  
 		
 	//   enableShader();
@@ -382,6 +383,10 @@ void Particule::update(VEC3 & p, VEC3 & v, MAT3 & b, MAT3 & t) {
 		pos += mpm_conf::dt_*v;
 	}
 
+	IS_DEF(v(0));
+	IS_DEF(v(1));
+	IS_DEF(v(2));
+
 	IS_DEF(pos(0));
 	IS_DEF(pos(1));
 	IS_DEF(pos(2));
@@ -390,14 +395,17 @@ void Particule::update(VEC3 & p, VEC3 & v, MAT3 & b, MAT3 & t) {
 	vel = v;
 	B = b;
 
-	// TODO 
 	// UPDATE DEFORMATION GRADIENT result is stored in forceIncrement
 	// THIS SECTION WILL DEPEND ON WHAT CONSTITUTIVE MODEL IS ONE USING
 
 	FLOAT h = mpm_conf::grid_spacing_;
 	cell = Vector3i((int)(pos(0)/h), (int)(pos(1)/h), (int)(pos(2)/h));
 
-	F_e *= (MAT3::Identity() + mpm_conf::dt_*t);
+	// F_e *= (MAT3::Identity() + mpm_conf::dt_*t);
+	F_e = (MAT3::Identity() + mpm_conf::dt_*t) * F_e;
+	// update b_e 
+	b_e = F_e * F_e.transpose();
+
 	//volume correction
 	vp += log(F_e.determinant());
 
@@ -453,7 +461,6 @@ void Particule::update(VEC3 & p, VEC3 & v, MAT3 & b, MAT3 & t) {
 			}
 			sigma_m(i, i) = sigma(i);
 		}
-
 		if (mpm_conf::anisotropy_on) {
 			MAT3 isoF = U*(T_m)*V.transpose() - MAT3::Identity();
 			MAT3 anisF = innerProduct(mpm_conf::inv_anisotropy_strain_, isoF) +  MAT3::Identity();
@@ -546,7 +553,7 @@ void Particule::computeEnergyDerivative(VEC3 sigma) {
 			 if (sigma(i) < 1e-10) {
 				 sigma(i) = 0;
 			 }
-		 }
+		}
 		FLOAT det = sigma(0)*sigma(1)*sigma(2);
 		if (std::isnan(det) || std::isinf(det)) {
 			det = 1;
@@ -575,16 +582,12 @@ MAT3 Particule::linearElasticity() {
 		FLOAT E = mpm_conf::young_modulus_;
 		FLOAT nu = mpm_conf::poisson_;
 
-		float mu = E / ((float)2 * ((float)1 + nu));
-	    float lambda = E * nu / (((float)1 + nu) * ((float)1 - ((float)2*nu)));
+		FLOAT mu = E / ((FLOAT)2 * ((FLOAT)1 + nu));
+	    FLOAT lambda = E * nu / (((FLOAT)1 + nu) * ((FLOAT)1 - ((FLOAT)2*nu)));
 
-		JacobiSVD<MATX> svd(F_e_n, ComputeThinU | ComputeThinV);
-		MAT3 U = svd.matrixU();
-		MAT3 V = svd.matrixV();
-
-	    MAT3 R = U*V.transpose(); // can be removed
-	    float J = F_e_n.determinant();
+	    FLOAT J = F_e_n.determinant();
 	    MAT3 out = (mu * (F_e_n - F_e_n.transpose().inverse())) + (lambda * log(J) * F_e_n.transpose().inverse());
+	    out = out * F_e_n.transpose();
 	    return out;
 	}
 
@@ -594,8 +597,8 @@ MAT3 Particule::linearElasticity() {
 		FLOAT E = mpm_conf::young_modulus_;
 		FLOAT nu = mpm_conf::poisson_;
 
-		float mu = E / ((float)2 * ((float)1 + nu));
-	    float lambda = E * nu / (((float)1 + nu) * ((float)1 - ((float)2*nu)));
+		FLOAT mu = E / ((FLOAT)2 * ((FLOAT)1 + nu));
+	    FLOAT lambda = E * nu / (((FLOAT)1 + nu) * ((FLOAT)1 - ((FLOAT)2*nu)));
 
 		JacobiSVD<MATX> svd(F_e_n, ComputeThinU | ComputeThinV);
 		MAT3 U = svd.matrixU();
@@ -619,8 +622,8 @@ MAT3 Particule::linearElasticity() {
 		FLOAT E = mpm_conf::young_modulus_;
 		FLOAT nu = mpm_conf::poisson_;
 
-		float mu = E / ((float)2 * ((float)1 + nu));
-	    float lambda = E * nu / (((float)1 + nu) * ((float)1 - ((float)2*nu)));
+		FLOAT mu = E / ((FLOAT)2 * ((FLOAT)1 + nu));
+	    FLOAT lambda = E * nu / (((FLOAT)1 + nu) * ((FLOAT)1 - ((FLOAT)2*nu)));
 
 		JacobiSVD<MATX> svd(F_e_n, ComputeThinU | ComputeThinV);
 		MAT3 U = svd.matrixU();
@@ -637,14 +640,13 @@ MAT3 Particule::linearElasticity() {
 
 	else if (method == 4) { // snow approx
 
-
 		MAT3 F_e_n = F_e;
 		// MAT3 symF = F_e_n*F_e_n.transpose() / F_e_n.determinant(); // try this as symF
 		FLOAT E = mpm_conf::young_modulus_;
 		FLOAT nu = mpm_conf::poisson_;
 
-		float mu = E / ((float)2 * ((float)1 + nu));
-	    float lambda = E * nu / (((float)1 + nu) * ((float)1 - ((float)2*nu)));
+		FLOAT mu = E / ((FLOAT)2 * ((FLOAT)1 + nu));
+	    FLOAT lambda = E * nu / (((FLOAT)1 + nu) * ((FLOAT)1 - ((FLOAT)2*nu)));
 
 		JacobiSVD<MATX> svd(F_e_n, ComputeThinU | ComputeThinV);
 		MAT3 U = svd.matrixU();
@@ -667,33 +669,32 @@ MAT3 Particule::linearElasticity() {
 		}
 
 		// computer new determinants of Fe and Fp
-		FLOAT det_Fe = T(0)*T(1)*T(2); // this det_Fe is of new F_e
-		if (std::isnan(det_Fe) || std::isinf(det_Fe)) {
-			det_Fe = 1;
+		FLOAT Je = T(0)*T(1)*T(2); // this Je is of new det(F_e)
+		if (std::isnan(Je) || std::isinf(Je)) {
+			Je = 1;
 		}
-		IS_DEF(det_Fe);
+		IS_DEF(Je);
 
-		FLOAT det_Fp = 1;
+		FLOAT Jp = 1;
 		MAT3 inv_T = MAT3::Zero();
 		for (uint i = 0; i < 3; ++i) {
 			TEST(T(i) != 0);
 			if (T(i) != 0) {
 				inv_T(i, i) = 1.0/T(i);
-				det_Fp *= sigma(i)*inv_T(i, i);
+				Jp *= sigma(i)*inv_T(i, i);
 			} else {
-				det_Fp = 1;
+				Jp = 1;
 			}
 		}
-
 		// compute snow energy derivative
-	    float snow_alpha = exp(mpm_conf::hardenning_param_(3)*(1-det_Fp));
+	    FLOAT snow_alpha = exp(mpm_conf::hardenning_param_(3)*(1-Jp));
 		IS_DEF(snow_alpha);
 
 		// obtain the energy derivative
 		VEC3 snow_energy_der = VEC3::Zero();
 		for (uint i = 0; i < 3; ++i) {
 			// I am not sure about the second term how is it obtained
-			snow_energy_der(i) = 2*mu*alpha*(sigma(i)-1) + lambda*alpha*sigma((i+1)%3)*sigma((i+2)%3)*(det_Fe -1);
+			snow_energy_der(i) = 2*mu*snow_alpha*(sigma(i)-1) + lambda*snow_alpha*sigma((i+1)%3)*sigma((i+2)%3)*(Je -1);
 			if (std::isnan(snow_energy_der(i)) || std::isinf(snow_energy_der(i))) {
 				snow_energy_der(i) = 0;
 			}
@@ -715,11 +716,85 @@ MAT3 Particule::linearElasticity() {
 		F_e = U*(T_m)*V.transpose();
 		F_p = V*inv_T*sigma_m*V.transpose()*F_p;
 		MAT3 out = U*der*V.transpose()*F_e.transpose() / F_e.determinant();
+		// v0*U*der*V.transpose()*F_e.transpose();
 	    return out;
 	}
 
+	else if (method == 5) { // continum foam - elastic model
 
-	else { //method 3 // cameille;s method
+	    // check yield if it is within the permisible range 
+		// if yes then proceed with this force
+		MAT3 F_e_n = F_e;
+	    FLOAT J = F_e_n.determinant();
+		MAT3 b_e_hat = b_e * pow(J, -2/3);	// note b_e is stored in .hpp file so can be globally used
+
+		FLOAT bm = mpm_conf::bm_; //bulk modulus
+		FLOAT sm = mpm_conf::sm_; // shear modulus
+		FLOAT sy = mpm_conf::sy_; // yield stress
+
+	    MAT3 dev_be_hat = b_e_hat - ((b_e_hat.trace()/3)  * MAT3::Identity()) ;
+	    // MAT3 out = (bm * 0.5* (J*J - 1) * MAT3::Identity() + sm * dev_be_hat) ;
+	    MAT3 out = (bm * 0.5* (J*J - 1) * MAT3::Identity() + sm * dev_be_hat) / (J*J);
+
+	    MAT3 s_np1_pre = sm * dev_be_hat; // the deviatoric part of stress tensor
+	    FLOAT s_np1_pre_mag = s_np1_pre.norm();
+	    // if (false)
+	    if (s_np1_pre_mag > sqrt(2.0/3.0)*sy)
+	    {
+	    	FLOAT eta = mpm_conf::eta_; // viscocity parameter
+	    	FLOAT h =  mpm_conf::hb_;
+	    	// plastic behavior starts have to perform the plastic correction
+	    	// first compute the time derivative of b_e
+	    	// using the implicit euler approach
+	    	// find root of the equation using bijection method for the magnitute of new s
+	    	FLOAT error = 1;
+	    	MAT3 s_np1 = MAT3::Identity(); 
+	    	FLOAT sol_r = s_np1_pre_mag;
+	    	FLOAT sol_l = sqrt(2.0/3.0)*sy;
+    		FLOAT rhs = pow(eta, 1/h)* (sol_r - s_np1_pre_mag) + 2*sm* mpm_conf::dt_ * pow(sol_r - sqrt(2.0/3.0)*sy, 1/h) ;
+    		FLOAT lhs = pow(eta, 1/h)* (sol_l - s_np1_pre_mag) + 2*sm* mpm_conf::dt_ * pow(sol_l - sqrt(2.0/3.0)*sy, 1/h) ;
+    		assert( not ((rhs<0 and lhs<0) or (rhs>0 and lhs>0)) );
+    		// std::cout << "rhs is " << sol_r << " lhs is " << sol_l << "\n";
+    		// std::cout << "rhs is " << rhs << " lhs is " << lhs << "\n";
+	    	while ( error > 1e-6)
+	    	{
+	    		FLOAT sol_m = (sol_l + sol_r)/2;
+	    		FLOAT val = pow(eta, 1/h)* (sol_m - s_np1_pre_mag) + 2*sm* mpm_conf::dt_ * pow(sol_m - sqrt(2.0/3.0)*sy, 1/h) ;
+	    		if (val < 0) {
+	    			sol_l = sol_m;
+	    			error = fabs(sol_l - sol_r);
+	    		}
+	    		else {
+	    			sol_r = sol_m;
+	    			error = fabs(sol_l - sol_r);	
+	    		}
+	    	}
+	    	FLOAT s_np1_mag = (sol_l + sol_r)/2; // this is just the magnitude
+	    	// printf("sol is %f\n", s_np1_mag);
+	    	// printf("error is %f\n", error);
+	    	s_np1 = (s_np1_pre / s_np1_pre_mag) * s_np1_mag;
+
+	    	MAT3 b_e_hat_cor = s_np1/sm + (b_e_hat.trace()/3.0) * MAT3::Identity();
+	    	b_e_hat_cor = b_e_hat_cor / pow(b_e_hat_cor.determinant(), 1/3);
+	    	MAT3 dev_be_hat_cor = b_e_hat_cor - ((b_e_hat_cor.trace()/3)  * MAT3::Identity()) ;
+	    	MAT3 L( b_e_hat_cor.llt().matrixL() );
+	    	F_e = L; // updating F_e will update b_e automatically in other functions
+	    	// just remember to use correct values of F_e
+	    	J = F_e.determinant();
+
+	    	out = (bm * 0.5* (J*J - 1) * MAT3::Identity() + sm * dev_be_hat_cor) / (J*J);
+	    	return out;
+	    	// remember b_e is just a place holder which is updated by F_e so remember to update F_e as well 
+	    }
+	    else
+			return out;	     
+	    	// perfectly elastic so just return the required force
+
+	    return out;
+	}	
+
+
+	else { //method 3 // camille's method
 
 		MAT3 rotF = rotation.transpose()*(F_e)*rotation;
 		MAT3 symF = 0.5*(rotF + rotF.transpose());
@@ -916,9 +991,6 @@ void Particule::setAnisotropyValues(FLOAT vx, FLOAT vy, FLOAT vz) {
 	ellipse = rotation*D;
 }
 
-
-
-
 void Particule::rotate(MAT3 rot) {
 	IS_DEF(rot(0, 0));
 	ellipse = rot*ellipse;
@@ -938,39 +1010,6 @@ MAT3 Particule::getRotation() const {
 VEC3 Particule::getAnisotropy() const {
 	return VEC3(valx, valy, valz);
 }
-
-
-// void Particule::anisotropicProject(VEC3 sigma, VEC3 &T, MAT3 V) {
-//   VEC3 mult = mpm_conf::anisotropy_values_;
-//   VEC3 T_iso(0, 0, 0);
-//   VEC3 sigma_iso;
-//   VEC3 coef;
-//   for (uint i = 0; i < 3; ++i) {
-//     VEC3 v = V.col(i);
-//     VEC3 v_iso;
-//     for (uint k = 0; k < 3; ++k) {
-//       v_iso(k) = v(k) * mult(k);
-//     }
-//     v_iso.normalize();
-//     for (uint k = 0; k < 3; ++k) {
-//       v(k) = v_iso(k) / mult(k);
-//     }
-//     coef(i)= v.norm();
-//   }
-	
-//   for (uint i = 0; i < 3; ++i) {
-//     sigma_iso(i) = sigma(i) * coef(i);
-//   }
-	
-//   project(sigma_iso, T_iso);
-
-//   for (uint i = 0; i < 3; ++i) {
-//     T(i) = T_iso(i) / coef(i);
-//   }
-// }
-
-
-
 
 void Particule::anisotropicProject(VEC3 sigma, VEC3 &T, MAT3 V) {
  

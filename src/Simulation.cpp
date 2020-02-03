@@ -138,6 +138,9 @@ void Simulation::oneStep() {
 	// 	// it performs force addition there itself
 	// }
 	grid.particulesToGrid(particules);
+
+	// debug function to check on particles
+	// grid.checkParticles(particules);
 	// not needed to smooth the velocities
 	if (mpm_conf::smooth_vel_) {
 		for (uint i = 0; i < 1; ++i) {
@@ -701,10 +704,89 @@ void Simulation::loadScene() {
 						std::list<VEC3> points = PoissonGenerator::GeneratePoissonPointsC(nb_part, prng,
 						 30, radius);
 						nb_part = points.size();
+						std::cout << "Number of particles : " << nb_part << std::endl; 
 						for (auto &v: points) {
+							float mag = vel.norm();
+							VEC3 radius_vec = VEC3(radius, radius, radius);
+							VEC3 norm_direc = (v - radius_vec).normalized() ;
+							VEC3 p_velocity = mag * norm_direc;
 							Particule *p = new Particule(volume*mpm_conf::density_/(FLOAT)nb_part,
-							 // volume/(FLOAT)nb_part, radius*v + center, VEC3(0,0,1), vel);
-							 volume/(FLOAT)nb_part, v + center, v.normalized(), vel);
+							volume/(FLOAT)nb_part, v - radius_vec + center, norm_direc, vel);
+							// volume/(FLOAT)nb_part, v - radius_vec + center, norm_direc, p_velocity);
+							particules.push_back(p);
+							if (random) {
+								randomRotation(rotation);
+							}
+							if(mpm_conf::anisotropy_on)
+							{
+								p->setAnisotropyValues(1, 1, 1);
+								p->setAnisotropyRotation(rotation);
+							}
+						}
+
+					} else if (line.substr(0,9) == " <obj>") {
+						VEC3 center(0, 0, 0);
+						uint nb_part;
+						FLOAT scale = 1;
+						std::string obj_filename;
+						VEC3 vel(0, 0, 0);
+						getline(file, line);
+						while (line.substr(0,10) != " </obj>") {
+							if (line.substr(0,10) == "  <center>") {
+								std::istringstream s(line.substr(10));
+								for (uint i = 0; i < 3; ++i) {
+									s >> center(i);
+								}
+							} else  if (line.substr(0,9) == "  <scale>") {
+								std::istringstream s(line.substr(9));
+								s >> scale;
+							}  else if (line.substr(0,8) == "  <file>") {
+								std::istringstream s(line.substr(8));
+								s >> obj_filename;
+							} else if (line.substr(0,12) == "  <velocity>") {
+								std::istringstream s(line.substr(12));
+								for (uint i = 0; i < 3; ++i) {
+									s >> vel(i);
+								}
+							} else {
+								std::cerr<<"Line not recognized in file FERWE\""<<scene_path<<"\": "<<line<<std::endl;
+								exit(-1);
+							}
+							getline(file, line);
+						}
+						std::list<VEC3> points;
+					    std::ifstream obj_inputfile;
+						obj_inputfile.open(obj_filename);
+						if(!obj_inputfile){
+						    std::cerr << "Unable to open " << obj_filename << "!" << std::endl;
+						    exit(1);
+						}
+						std::string line;
+						while(std::getline(obj_inputfile, line)){
+						    std::stringstream ss(line);
+						    VEC3 thisXp;
+						    if (line[0] == 'v'){
+						        ss.ignore();
+						        for (int i = 0; i < 3; i++){
+						            ss >> thisXp(i);
+						            //TODO assert data
+						            //assert(thisXp(i) > 0 && thisXp(i) < 1);
+						        }
+						    }
+						    points.push_back(thisXp);
+						}
+						// FLOAT volume = 4.0/3.0*M_PI*pow(radius, 3);
+						FLOAT volume = pow(scale,3);
+						// PoissonGenerator::PRNG prng;
+						// std::list<VEC3> points = PoissonGenerator::GeneratePoissonPointsC(nb_part, prng,
+						//  30, radius);
+						nb_part = points.size();
+						std::cout << "Number of particles : " << nb_part << std::endl; 
+						for (auto &v: points) {
+							float mag = vel.norm();
+							VEC3 norm_direc = VEC3(0, 0, 1);
+							Particule *p = new Particule(volume*mpm_conf::density_/(FLOAT)nb_part,
+							volume/(FLOAT)nb_part, v + center, norm_direc, vel);
 							particules.push_back(p);
 							if (random) {
 								randomRotation(rotation);

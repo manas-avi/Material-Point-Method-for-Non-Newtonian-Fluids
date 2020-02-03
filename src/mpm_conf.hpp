@@ -35,6 +35,8 @@ namespace mpm_conf {
   // isotropic elasticity
   extern FLOAT mu_, lambda_;
   extern FLOAT young_modulus_, poisson_;
+  extern FLOAT bm_, sm_, sy_;
+  extern FLOAT eta_, hb_;
 
   //anisotropic elasticity
   extern Eigen::VEC3 young_vec_;
@@ -69,6 +71,7 @@ namespace mpm_conf {
   extern FLOAT damping_;
   extern FLOAT cheat_damping_;
   extern bool smooth_vel_;
+  extern bool enable_debugging;
 
   // generalized anis
   extern Eigen::VEC3 anisotropy_values_;

@@ -40,6 +40,7 @@ private :
   
   MAT3 F_p; //plastic deformation
   MAT3 F_e; //elastic deformation
+  MAT3 b_e; //elastic deformation
   MAT3 F; //F_e*F_p
 
   MAT3 B;

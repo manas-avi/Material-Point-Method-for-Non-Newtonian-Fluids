@@ -92,7 +92,7 @@ int main(int argc, char **argv) {
 		} else if (s == "-h" || s == "-help") {
 			help();
 		} else {
-			std::cerr<<"\nERROR: Unknown option\n"<<std::endl;
+			std::cerr<<"\nERROR: Unknown option "<< s << "\n"<<std::endl;
 			help();
 		}
 	}
@@ -152,7 +152,6 @@ int main(int argc, char **argv) {
 				help();
 			}
 			std::cout<<"Exporting Img"<<" "<<argv[i+1]<<std::endl;
-			sim->setImg(argv[i+1]);
 			++i;
 		} else if (s == "-s" || s == "-scene") {
 			if (argc < i + 2) {
@@ -181,7 +180,7 @@ int main(int argc, char **argv) {
 		} else if (s == "-h" || s == "-help") {
 			help();
 		} else {
-			std::cerr<<"\nERROR: Unknown option\n"<<std::endl;
+			std::cerr<<"\nERROR: Unknown option "<< s << "\n"<<std::endl;
 			help();
 		}
 	}

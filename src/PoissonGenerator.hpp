@@ -109,13 +109,16 @@ namespace PoissonGenerator
 			return in;
 			//	v(0) >= 0 && v(1) >= 0	&& v(2) >= 0 && v(0) <= 1 && v(1) <= 1 && v(2) <= 1 ;
 		}
-		// NOTE is not used anywhere obsolete function delete this afterwards
+
 		bool IsInSphere(FLOAT Radius) const
 		{
 			FLOAT sq_sm = 0.0;
 			for (uint i = 0; i < 3; ++i) {
 				if (v(i) < 0) // because grid datastructures inherently uses this.
 					return false;
+
+				// FLOAT tvi = (v(i)*2 - 1);
+				// sq_sm += tvi*tvi;
 				sq_sm += (v(i) - Radius)* (v(i) - Radius);
 				// sq_sm += v(i)*v(i);
 			}

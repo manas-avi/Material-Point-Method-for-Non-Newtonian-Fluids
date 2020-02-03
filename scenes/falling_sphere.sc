@@ -10,8 +10,9 @@
 </obstacles>
 <particules>
  <sphere> 
-  <radius> 0.05
-  <center> 0.5 0.5 0.4
+  <radius> 0.1
+  <center> 0.5 0.5 0.5
   <nb particules> 6000
+  <velocity> 0 0 -7
  </sphere>
 </particules>

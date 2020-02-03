@@ -19,6 +19,14 @@ namespace mpm_conf {
 
 	FLOAT young_modulus_ = 3.537e+7;
 	FLOAT poisson_ = 0.3;
+
+	FLOAT bm_ = 109.0;
+	FLOAT sm_ = 1.6;
+	FLOAT sy_ = 120.0;
+
+	FLOAT eta_ = 27.2;
+	FLOAT hb_ = 0.22;
+
 	FLOAT lambda_ = young_modulus_*poisson_/((1+poisson_)*(1-2*poisson_));
 	FLOAT mu_ = young_modulus_/(2*(1+poisson_));
 
@@ -34,7 +42,7 @@ namespace mpm_conf {
 	FLOAT lim_density_ = density_/2.0;
 
 	FLOAT friction_coef_ = 1.0;
-	FLOAT rest_coeff_ = 0.5;
+	FLOAT rest_coeff_ = 0.0;
 
 	bool display_sphere_ = false;
 	int replay_speed_ = 1;
@@ -64,6 +72,7 @@ namespace mpm_conf {
 	uint method_ = apic_;
 	bool implicit_ = false;
 	bool save_img = false;
+	bool enable_debugging = false;
 	
 	uint export_step_ = 1;
 	
@@ -134,6 +143,21 @@ namespace mpm_conf {
 					INFO(3, "poisson "<<poisson_vec_);
 					young_vec_def = true;
 					young_mod_def = true;
+				}  else if (line.substr(0,4) == "<bm>") {
+					std::istringstream s(line.substr(4));
+					s >> bm_;
+				}  else if (line.substr(0,4) == "<sm>") {
+					std::istringstream s(line.substr(4));
+					s >> sm_;
+				}  else if (line.substr(0,4) == "<sy>") {
+					std::istringstream s(line.substr(4));
+					s >> sy_;
+				}  else if (line.substr(0,4) == "<hb>") {
+					std::istringstream s(line.substr(4));
+					s >> hb_;
+				}  else if (line.substr(0,5) == "<eta>") {
+					std::istringstream s(line.substr(5));
+					s >> eta_;
 				}  else if (line.substr(0,8) == "<mu_vec>") {
 					std::istringstream s(line.substr(8));
 					for (uint i = 0; i < 3; ++i) {
@@ -169,6 +193,9 @@ namespace mpm_conf {
 				}  else if (line.substr(0,16) == "<display_sphere>") {
 					std::istringstream s(line.substr(16));
 					s >> display_sphere_;
+				}  else if (line.substr(0,18) == "<enable_debugging>") {
+					std::istringstream s(line.substr(18));
+					s >> enable_debugging;
 				}  else if (line.substr(0,6) == "<mode>") {
 					std::istringstream s(line.substr(6));
 					s >> plastic_mode_;

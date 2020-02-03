@@ -64,6 +64,9 @@ public :
   void particulesToGridImplicite(std::vector<Particule*> & particules);
   void gridToParticules(std::vector<Particule*> & particules);
 
+  // debug function to check particles 
+  void checkParticles(std::vector<Particule*> & particules);
+  void removeEscapedParticles(std::vector<Particule*> & particules);
 
   // void initCollision(Obstacle *ob);
   // void collision(Obstacle *ob);

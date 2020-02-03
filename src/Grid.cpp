@@ -203,62 +203,41 @@ void Grid::draw(glm::mat4 m, int s) {
 		enableShader();
 		setMVP(m, s);
 
-  //  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, vertices);
-  //  glEnableVertexAttribArray(0);
+		if (mpm_conf::enable_debugging) {
 
-  //  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, colors);
-  //  glEnableVertexAttribArray(1);
+			glLineWidth(1.0f);
+			for (uint i = 0; i <= i_max; ++i) {
+				for (uint j = 0; j <= j_max; ++j) {
+					for (uint k = 0; k <= k_max; ++k) {
+						uint ind = index(i, j, k);
+						if (active_nodes[ind]) {
 
-  //  glDrawArrays(GL_LINES, 0, nb_lines*2);
+							VEC3 pos = positions[ind];
+							VEC3 vel = mpm_conf::dt_ * velocities[ind]+pos; 
+							GLfloat vel_line[6] = {pos(0),  pos(1), pos(2), vel(0), vel(1), vel(2)};
+							GLfloat vel_color[6] = {0, 0, 1, 0, 0, 1};
+							GLfloat vel_color2[6] = {1, 0, 0, 1, 0, 0};
 
-  //  glDisableVertexAttribArray(0);
-  //  glDisableVertexAttribArray(1);
+							enableShader();
+							setMVP(m, s);
 
-  //  disableShader();
+							glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, vel_line);
+							glEnableVertexAttribArray(0);
 
-		glLineWidth(1.0f);
-		for (uint i = 0; i <= i_max; ++i) {
-			for (uint j = 0; j <= j_max; ++j) {
-				for (uint k = 0; k <= k_max; ++k) {
-					uint ind = index(i, j, k);
-					if (active_nodes[ind]) {
-  	// //INFO(3, masses[ind]);
-  	 // Sphere sp(0.01*masses[ind], Scene::SCENE->getShader(0));
-  	 //  sp.setColor(0, 1, 0);
-  	 //  if (active_nodes[ind]) {
-  	 //    sp.setColor(1, 0, 0);
-  	 //  }
-						VEC3 pos = positions[ind];
-						VEC3 vel = mpm_conf::dt_ * velocities[ind]+pos; 
-  	 // glm::mat4 model = translate(glm::mat4(1.0f), glm::vec3(pos(0), pos(1), pos(2)));
-  	 // glm::mat4 cur_model = model * m_model_view;
-  	 // 	 sp.draw(cur_model, Scene::SCENE->getShader(0));
-  	   //   INFO(3, "vel "<<vel(0)<<", "<<vel(1)<<", "<<vel(2));
-  	 //   //assert(false);
-  	 // }
-						GLfloat vel_line[6] = {pos(0),  pos(1), pos(2), vel(0), vel(1), vel(2)};
-						GLfloat vel_color[6] = {0, 0, 1, 0, 0, 1};
-						GLfloat vel_color2[6] = {1, 0, 0, 1, 0, 0};
+							if (velocities[ind].norm() < 2) {
+								glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, vel_color);
+							} else {
+								glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, vel_color2);
+							}
+							glEnableVertexAttribArray(1);
 
-						enableShader();
-						setMVP(m, s);
+							glDrawArrays(GL_LINES, 0, 2);
 
-						glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, vel_line);
-						glEnableVertexAttribArray(0);
+							glDisableVertexAttribArray(0);
+							glDisableVertexAttribArray(1);
 
-						if (velocities[ind].norm() < 2) {
-							glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, vel_color);
-						} else {
-							glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, vel_color2);
+							disableShader();
 						}
-						glEnableVertexAttribArray(1);
-
-						glDrawArrays(GL_LINES, 0, 2);
-
-						glDisableVertexAttribArray(0);
-						glDisableVertexAttribArray(1);
-
-						disableShader();
 					}
 				}
 			}
@@ -370,7 +349,35 @@ void Grid::smoothVelocity() {
 	}
 }
 
+void Grid::removeEscapedParticles(std::vector<Particule*> & particules) {
+
+	std::vector<Particule*> new_particules;
+	// #pragma omp parallel for
+	// TODO SEE IF IT CAN BE PARALLELIZED
+	for (uint ip = 0; ip < particules.size(); ++ip) {
+		Particule *p = particules[ip];
+		Vector3i cell = p->getCell();
+
+		// check for this assertion otherwise the code gets stuck in an infinite loop
+		int i_curr = cell(0);
+		int j_curr = cell(1);
+		int k_curr = cell(2);
+
+		if (i_curr < 0 or i_curr > i_max or j_curr < 0 or j_curr > j_max or k_curr < 0 or k_curr > k_max) {
+			// do nothing
+		}
+		else {
+			new_particules.push_back(p);
+		}
+
+	}
+	particules = new_particules;
+}
+
 void Grid::particulesToGrid(std::vector<Particule*> & particules) {
+
+	removeEscapedParticles(particules);
+	checkParticles(particules);
 	for (auto &p : particules) {
 	    Vector3i c = p->getCell(); // tells which cell is it in
 	    uint ind = c(0)*j_max*k_max + c(1)*(k_max) + c(2);
@@ -387,8 +394,10 @@ void Grid::particulesToGrid(std::vector<Particule*> & particules) {
 	}
 	// INFO(2, "Part 2 Grid");
 	// INFO(3, particules.front()->getVelocity());
-
 	FLOAT s2 = mpm_conf::grid_spacing_*mpm_conf::grid_spacing_; 
+
+	// ///////////////////? SOMETHING IS WRONG WITH PARTICLES FIX ITTTT !!!
+
 	// grid spacing square used in D matrix for apic based calculations
 
 	#pragma omp parallel for
@@ -481,6 +490,28 @@ void Grid::particulesToGrid(std::vector<Particule*> & particules) {
 // exit(1);
 	//INFO(2, "END Part 2 Grid");
 }
+
+// debug function to check on particles
+void Grid::checkParticles(std::vector<Particule*> & particules) {
+	#pragma omp parallel for
+	for (uint ip = 0; ip < particules.size(); ++ip) {
+		Particule *p = particules[ip];
+		Vector3i cell = p->getCell();
+
+		// check for this assertion otherwise the code gets stuck in an infinite loop
+		int i_curr = cell(0);
+		int j_curr = cell(1);
+		int k_curr = cell(2);
+
+		assert(i_curr <= i_max);
+		assert(i_curr >= 0);
+		assert(j_curr <= j_max);
+		assert(j_curr >= 0);
+		assert(k_curr <= k_max);
+		assert(k_curr >= 0);
+	}		
+}
+
 void Grid::gridToParticules(std::vector<Particule*> & particules) {
 	// MAT3 orientation = particules[1000]->getOrientation();
 	// EigenSolver<MatrixXd> es(orientation);
@@ -522,6 +553,8 @@ void Grid::gridToParticules(std::vector<Particule*> & particules) {
 								if (active_nodes[ind]) 
 								{
 									FLOAT w = p->weight(Vector3i(i, j, k));
+									IS_DEF(w);
+									IS_DEF(velocities[ind](0));
 									// these are particle based velocity
 									vel += w*velocities[ind]; // this is pic based update
 
@@ -651,8 +684,6 @@ void Grid::init(std::vector<Particule*> & particules) {
 	for (uint ip = 0; ip < particules.size(); ++ip) {
 		Particule *p = particules[ip];
 
-		/* should not use constant density rather use grid based density*/
-		// FLOAT density = mpm_conf::density_;
 		/* rather use grid interpolated densities */
 	    FLOAT density = 0;//mpm_conf::density_;;
 	    Vector3i cell = p->getCell();
@@ -672,6 +703,8 @@ void Grid::init(std::vector<Particule*> & particules) {
 		    }
 	    }
 	    density /= s3;
+		/* should not use constant density rather use grid based density*/
+		// density = mpm_conf::density_;
 	    p->initVolume(density);
 	    //INFO(3,"density "<<mpm_conf::density_<<"   denstity local "<<density);
 	}
@@ -724,7 +757,6 @@ void Grid::collision(std::list<Obstacle*> obstacles) {
 				// so that it can come back to the surface
 		      	FLOAT dv = -dcomp/mpm_conf::dt_;
 				velocities[i] += dv*n*(1 + mpm_conf::rest_coeff_);
-				// velocities[i] += dv*n*(1 + 5);
 				// //friction
 				VEC3 vt = velocities[i] - velocities[i].dot(n)*n;
 				FLOAT nvt = vt.norm();
@@ -788,6 +820,26 @@ MAT3 Grid::secondDer(uint i, uint j, std::vector<Particule*> & particules) {
 			}
 		}
 	}
+
+	return second_der;
+}
+
+	// CRAP CODE ---->
+
+  //  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, vertices);
+  //  glEnableVertexAttribArray(0);
+
+  //  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, colors);
+  //  glEnableVertexAttribArray(1);
+
+  //  glDrawArrays(GL_LINES, 0, nb_lines*2);
+
+  //  glDisableVertexAttribArray(0);
+  //  glDisableVertexAttribArray(1);
+
+  //  disableShader();
+
+
   //  }
   //     INFO(3, "seconde der\n"<<second_der);
   // TEST(second_der == second_der.transpose());
@@ -800,9 +852,20 @@ MAT3 Grid::secondDer(uint i, uint j, std::vector<Particule*> & particules) {
   //     }
   //   }
   // }
-	return second_der;
-}
 
+
+  	// //INFO(3, masses[ind]);
+  	 // Sphere sp(0.01*masses[ind], Scene::SCENE->getShader(0));
+  	 //  sp.setColor(0, 1, 0);
+  	 //  if (active_nodes[ind]) {
+  	 //    sp.setColor(1, 0, 0);
+  	 //  }
+  	 // glm::mat4 model = translate(glm::mat4(1.0f), glm::vec3(pos(0), pos(1), pos(2)));
+  	 // glm::mat4 cur_model = model * m_model_view;
+  	 // 	 sp.draw(cur_model, Scene::SCENE->getShader(0));
+  	   //   INFO(3, "vel "<<vel(0)<<", "<<vel(1)<<", "<<vel(2));
+  	 //   //assert(false);
+  	 // }
 
 // void Grid::collision(Obstacle *ob) {
 
