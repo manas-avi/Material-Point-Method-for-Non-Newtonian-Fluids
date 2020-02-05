@@ -32,6 +32,20 @@ Simulation::~Simulation() {
 	clear();
 }
 
+FLOAT min(FLOAT x,FLOAT y) {
+	if (x<y)
+		return x;
+	else 
+		return y;
+}
+
+FLOAT max(FLOAT x,FLOAT y) {
+	if (x>y)
+		return x;
+	else 
+		return y;
+}
+
 void Simulation::init() {
 	nb_file_i = 0;
 	nb_file_e = 0;
@@ -672,6 +686,7 @@ void Simulation::loadScene() {
 						uint nb_part;
 						FLOAT radius = 1;
 						VEC3 vel(0, 0, 0);
+						FLOAT force_val = 0;
 						getline(file, line);
 						while (line.substr(0,10) != " </sphere>") {
 							if (line.substr(0,10) == "  <center>") {
@@ -685,6 +700,9 @@ void Simulation::loadScene() {
 							} else  if (line.substr(0,10) == "  <radius>") {
 								std::istringstream s(line.substr(10));
 								s >> radius;
+							} else  if (line.substr(0,9) == "  <force>") {
+								std::istringstream s(line.substr(9));
+								s >> force_val;
 							} else if (line.substr(0,17) == "  <nb particules>") {
 								std::istringstream s(line.substr(17));
 								s >> nb_part;
@@ -708,10 +726,13 @@ void Simulation::loadScene() {
 						for (auto &v: points) {
 							float mag = vel.norm();
 							VEC3 radius_vec = VEC3(radius, radius, radius);
-							VEC3 norm_direc = (v - radius_vec).normalized() ;
+							VEC3 norm_direc = (v - radius_vec).normalized();
+							VEC3 tang_velo = norm_direc.cross(vel);
+
 							VEC3 p_velocity = mag * norm_direc;
 							Particule *p = new Particule(volume*mpm_conf::density_/(FLOAT)nb_part,
 							volume/(FLOAT)nb_part, v - radius_vec + center, norm_direc, vel);
+							// volume/(FLOAT)nb_part, v - radius_vec + center, norm_direc, tang_velo);
 							// volume/(FLOAT)nb_part, v - radius_vec + center, norm_direc, p_velocity);
 							particules.push_back(p);
 							if (random) {
@@ -722,7 +743,22 @@ void Simulation::loadScene() {
 								p->setAnisotropyValues(1, 1, 1);
 								p->setAnisotropyRotation(rotation);
 							}
+							// depending on force type add force values on sphere
+							// p->setForce(VEC3(0,0,force_val));
+							// if (force_val > 0) {
+							// 	p->setForce(VEC3(0,0,-10)*force_val);
+							// }
+							// else if (force_val < 0) {
+							// 	p->setForce(norm_direc*force_val);
+							// }
+							// else {
+							// 	INFO(2, "FORCE TYPE NOT FOUND");
+							// 	exit(1);
+							// }
+
 						}
+
+
 
 					} else if (line.substr(0,9) == " <obj>") {
 						VEC3 center(0, 0, 0);
@@ -785,7 +821,8 @@ void Simulation::loadScene() {
 							    points.push_back(thisXp);
 						    }
 						}
-						FLOAT volume = 0.001*pow(scale,3);
+						// FLOAT volume = 0;
+						FLOAT x_min=1000, x_max=0, y_min=1000, y_max=0, z_min=1000, z_max=0;
 						nb_part = points.size();
 						std::cout << "Number of particles : " << nb_part << std::endl; 
 						VEC3 com = VEC3(0,0,0);
@@ -793,14 +830,22 @@ void Simulation::loadScene() {
 							com = com + v/ nb_part;
 						}
 						for (auto &v: points) {
-							float mag = vel.norm();
-							VEC3 norm_direc = VEC3(0, 0, 1);
-							// since things are a bit twisted about x-y axis so we have to rotate the object
 							Eigen::AngleAxisd rot_mat1(xangle, Eigen::Vector3d::UnitX());
 							Eigen::AngleAxisd rot_mat2(yangle, Eigen::Vector3d::UnitY());
 							MAT3 rotationMatrix = rot_mat1.matrix() * rot_mat2.matrix();
 							v = rotationMatrix * (v-com);
 							v = v*scale  + center;
+							x_min=min(x_min, v(0)); x_max=max(x_max, v(0));
+							y_min=min(y_min, v(1)); y_max=max(y_max, v(1));
+							z_min=min(z_min, v(2)); z_max=max(z_max, v(2));
+						}
+						// corrected volume of the bounding box of the object.
+						// FLOAT volume = 0.001*pow(scale,3);
+						FLOAT volume = (x_max-x_min)*(y_max-y_min)*(z_max-z_min);
+						for (auto &v: points) {
+							float mag = vel.norm();
+							VEC3 norm_direc = VEC3(0, 0, 1);
+							// since things are a bit twisted about x-y axis so we have to rotate the object
 							Particule *p = new Particule(volume*mpm_conf::density_/(FLOAT)nb_part,
 							volume/(FLOAT)nb_part, v, norm_direc, vel);
 							particules.push_back(p);
@@ -813,6 +858,7 @@ void Simulation::loadScene() {
 								p->setAnisotropyRotation(rotation);
 							}
 						}
+
 
 					} else {
 						std::cerr<<"Line not recognized in file \""<<scene_path<<"\": "<<line<<std::endl;

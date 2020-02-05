@@ -23,6 +23,8 @@ Particule::Particule(FLOAT mass, FLOAT vol, VEC3 p, VEC3 n, VEC3 velo, int shade
 	
 	//  INFO(3, velo);//((int)(p(0)/Grid::spacing))<<", "<< ((int)(p(1)/Grid::spacing))<<", "<< ((int)(p(2)/Grid::spacing)));
 	// m_model_view = translate(glm::mat4(1.0f), glm::vec3(pos(0), pos(1), pos(2)));
+	
+	force_ext = VEC3::Zero();
 	B = MAT3::Zero();
 	forceIncrement = MAT3::Zero();
 	hardenning = 0;
@@ -239,6 +241,13 @@ VEC3 Particule::getVelocity() const {
 
 void Particule::setVelocity(VEC3 velo) {
 	vel = velo;
+}
+
+void Particule::setForce(VEC3 f) {
+	force_ext = f;
+}
+VEC3 Particule::getForce() {
+	return force_ext;
 }
 
 FLOAT Particule::getMass() const {

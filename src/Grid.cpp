@@ -438,8 +438,10 @@ void Grid::particulesToGrid(std::vector<Particule*> & particules) {
 												// TODO remove this commented line later 
 												IS_DEF(velocities[ind](0));
 												VEC3 incrf = p->getForceIncrement()*p->gradWeight(Vector3i(i, j, k));
+												VEC3 extrf = p->getForce();
 												if (!std::isnan(incrf(0)) && !std::isinf(incrf(0))) {
 													f += incrf;
+													f += extrf;
 												}
 												IS_DEF(f(0));
 												

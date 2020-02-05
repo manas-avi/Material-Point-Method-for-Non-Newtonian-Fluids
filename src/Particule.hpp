@@ -37,6 +37,8 @@ private :
   FLOAT v; //volume
   FLOAT m; //masse
   FLOAT density;
+
+  VEC3 force_ext;
   
   MAT3 F_p; //plastic deformation
   MAT3 F_e; //elastic deformation
@@ -90,6 +92,10 @@ public:
   void setPosition(VEC3 p);
   VEC3 getVelocity() const;
   void setVelocity(VEC3 velo);
+  
+  // set force that is applied to the point
+  void setForce(VEC3 f);
+  VEC3 getForce();
 
   FLOAT getMass() const;
   FLOAT getVolume() const;
@@ -128,7 +134,8 @@ public:
 
   MAT3 getRotation() const;
   VEC3 getAnisotropy() const;
-  
+
+
   void anisotropicProject(VEC3 sigma, VEC3 &T, MAT3 U);
   
   void computeEnergySecondDer(VEC3 sigma, MAT3 U, MAT3 V);

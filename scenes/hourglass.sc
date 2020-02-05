@@ -20,6 +20,6 @@
   <x> 0.4 0.6
   <y> 0.4 0.6
   <z> 0.6 0.8
-  <nb particules> 10000
+  <nb particules> 1000
  </cuboid>
 </particules>

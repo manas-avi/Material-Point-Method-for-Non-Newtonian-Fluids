@@ -11,10 +11,10 @@
 <particules>
  <obj>
   <scale> 0.3
-  <center> 0.5 0.5 0.5
+  <center> 0.5 0.5 0.3
   <xangle> 90
   <yangle> -90
   <file> models/sparseDragonTranslated.obj
-  <velocity> 0 0 -5
+  <velocity> 0 0 0
  </obj>
 </particules>
