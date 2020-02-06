@@ -758,8 +758,6 @@ void Simulation::loadScene() {
 
 						}
 
-
-
 					} else if (line.substr(0,9) == " <obj>") {
 						VEC3 center(0, 0, 0);
 						uint nb_part;

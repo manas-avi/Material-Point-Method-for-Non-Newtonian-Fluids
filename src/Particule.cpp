@@ -747,8 +747,8 @@ MAT3 Particule::linearElasticity() {
 
 	    MAT3 s_np1_pre = sm * dev_be_hat; // the deviatoric part of stress tensor
 	    FLOAT s_np1_pre_mag = s_np1_pre.norm();
-	    if (false)
-	    // if (s_np1_pre_mag > sqrt(2.0/3.0)*sy)
+	    // if (false)
+	    if (s_np1_pre_mag > sqrt(2.0/3.0)*sy)
 	    {
 	    	FLOAT eta = mpm_conf::eta_; // viscocity parameter
 	    	FLOAT h =  mpm_conf::hb_;
@@ -797,7 +797,6 @@ MAT3 Particule::linearElasticity() {
 	    	F_e = L; // updating F_e will update b_e automatically in other functions
 	    	// just remember to use correct values of F_e
 	    	J = F_e.determinant();
-
 	    	out = (bm * 0.5* (J*J - 1) * MAT3::Identity() + sm * dev_be_hat_cor) / (J*J);
 	    	return out;
 	    	// remember b_e is just a place holder which is updated by F_e so remember to update F_e as well 
