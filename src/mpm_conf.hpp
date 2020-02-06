@@ -88,6 +88,10 @@ namespace mpm_conf {
   extern uint method_; //0 apic, 1 pic, 2 flip, 3 0.05*pic+0.95*flip
   extern bool implicit_;
   extern bool save_img;
+
+  extern uint adapt_step_;
+  extern bool adapt_step_bool_;
+
   
   extern uint export_step_; //export particules every x steps 
   void loadConf(std::string file);

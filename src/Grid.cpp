@@ -352,8 +352,6 @@ void Grid::smoothVelocity() {
 void Grid::removeEscapedParticles(std::vector<Particule*> & particules) {
 
 	std::vector<Particule*> new_particules;
-	// #pragma omp parallel for
-	// TODO SEE IF IT CAN BE PARALLELIZED
 	for (uint ip = 0; ip < particules.size(); ++ip) {
 		Particule *p = particules[ip];
 		Vector3i cell = p->getCell();
@@ -492,7 +490,7 @@ void Grid::particulesToGrid(std::vector<Particule*> & particules) {
 
 // debug function to check on particles
 void Grid::checkParticles(std::vector<Particule*> & particules) {
-	#pragma omp parallel for
+	// #pragma omp parallel for
 	for (uint ip = 0; ip < particules.size(); ++ip) {
 		Particule *p = particules[ip];
 		Vector3i cell = p->getCell();
@@ -772,6 +770,30 @@ void Grid::collision(std::list<Obstacle*> obstacles) {
 		}
 	}
 }
+
+bool Grid::checkParticlesAdapt(std::vector<Particule*> & particules, FLOAT vel_mag_buf) {
+	// TODO FILL THIS WITH USEFUL CRITERION
+	bool fail = false;
+	FLOAT vel_mag = 0;
+	// #pragma omp parallel for
+	for (uint ip = 0; ip < particules.size(); ++ip) {
+		Particule *p = particules[ip];
+		VEC3 p_vel = p->getVelocity();
+		vel_mag = std::max(p_vel.norm(), vel_mag);
+	}
+	printf("vel mag is %f\n", fabs(vel_mag ));
+	printf("vel mag is %f\n", fabs(vel_mag_buf));
+	if (fabs(vel_mag - vel_mag_buf) > 1)
+		return true;
+	return false;
+
+}
+
+bool Grid::checkGridAdapt() {
+	// TODO FILL THIS WITH USEFUL CRITERION
+	return true;
+}
+
 
 MAT3 Grid::secondDer(uint i, uint j, std::vector<Particule*> & particules) {
 	MAT3 second_der = MAT3::Zero();

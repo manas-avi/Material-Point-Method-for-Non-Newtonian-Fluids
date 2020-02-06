@@ -73,6 +73,9 @@ namespace mpm_conf {
 	bool implicit_ = false;
 	bool save_img = false;
 	bool enable_debugging = false;
+
+	bool adapt_step_bool_ = false;
+	uint adapt_step_ = 0;
 	
 	uint export_step_ = 1;
 	
@@ -167,10 +170,6 @@ namespace mpm_conf {
 				}  else if (line.substr(0,11) == "<time_step>") {
 					std::istringstream s(line.substr(11));
 					s >> dt_;
-
-			// //***** DON'T FORGET TO REMOVE
-			// dt_ = 0.0001;
-
 				}  else if (line.substr(0,9) == "<gravity>") {
 					std::istringstream s(line.substr(9));
 					for (uint i = 0; i < 3; ++i) {
@@ -196,6 +195,10 @@ namespace mpm_conf {
 				}  else if (line.substr(0,18) == "<enable_debugging>") {
 					std::istringstream s(line.substr(18));
 					s >> enable_debugging;
+				}  else if (line.substr(0,4) == "<ad>") {
+					std::istringstream s(line.substr(4));
+					s >> adapt_step_;
+					adapt_step_bool_ = true;
 				}  else if (line.substr(0,6) == "<mode>") {
 					std::istringstream s(line.substr(6));
 					s >> plastic_mode_;

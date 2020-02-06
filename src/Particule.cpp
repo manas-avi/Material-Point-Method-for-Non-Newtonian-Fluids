@@ -782,7 +782,7 @@ MAT3 Particule::linearElasticity() {
 	    		if (num_iter > 1000){
 	    			sol_l = s_np1_pre_mag;
 	    			sol_r = s_np1_pre_mag;
-	    			printf("Exceeding iteraitons %d\n", num_iter);
+	    			// printf("Exceeding iteraitons %d\n", num_iter);
 	    		}
 	    	}
 	    	FLOAT s_np1_mag = (sol_l + sol_r)/2; // this is just the magnitude

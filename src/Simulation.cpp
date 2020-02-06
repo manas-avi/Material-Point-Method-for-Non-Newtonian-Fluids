@@ -55,16 +55,27 @@ void Simulation::init() {
 	}
 
 	if (!import_) {
-
 		grid = Grid(mpm_conf::size_grid_(0), mpm_conf::size_grid_(1), mpm_conf::size_grid_(2), mpm_conf::grid_spacing_, 2);
 		loadScene();
 
 		grid.init(particules);
 		grid.initCollision(obstacles);
 
+		particules_buf.resize(particules.size());
+		obstacles_buf.resize(obstacles.size());
+		for (uint ip = 0; ip < particules.size(); ++ip) {
+			Particule *p = particules[ip]; 
+			Particule *np = new Particule(p->getMass(), p->getVolume(),p->getPosition(),
+							 VEC3(0, 0, 1), p->getVelocity());
+			particules_buf.push_back(np);
+		}
+		// particules_buf = particules;
+		obstacles_buf = obstacles;
+
 		INFO(1, "Lame Parameters : lambda = "<<mpm_conf::lambda_<<"    mu = "<<mpm_conf::mu_<<"\n");
 		INFO(1, "dt = "<<mpm_conf::dt_<<"\n");
 		INFO(3, "obstacles = "<<obstacles.size()<<"\n");
+		INFO(3, "particules = "<<particules.size()<<"\n");
 		if (export_) {
 			exportSim();
 		}
@@ -77,10 +88,13 @@ void Simulation::init() {
 
 void Simulation::clearParticules() {
 	for (auto& p : particules) {
-    // INFO(3,"delete p"<<" "<<p);
 		delete p;
 	}
 	particules.clear();
+	for (auto& p : particules_buf) {
+		delete p;
+	}
+	particules_buf.clear();
 }
 
 void Simulation::clear() {
@@ -90,16 +104,54 @@ void Simulation::clear() {
 		delete ob;
 	}
 	obstacles.clear();
+	for (auto& ob : obstacles_buf) {
+		delete ob;
+	}
+	obstacles_buf.clear();
 }
 
 void Simulation::animate() {
 	++t;
-	 INFO(1, "Simulation step : "<<t);
+	INFO(1, "Simulation step : "<< t << " and current dt is " << mpm_conf::dt_);
 	if (!import_) {
-		oneStep();
+		// so t is the simulation step
+		if (t%mpm_conf::adapt_step_ == 0 and mpm_conf::adapt_step_bool_) {
+			// try oneStep with increased dt 
+			mpm_conf::dt_ *= 2;
+			if (not Simulation::oneStepTry()) {
+				// copy particules from r to l
+				// copy(particules_buf, particules);
+				particules_buf = particules;
+				obstacles_buf = obstacles;
+			}
+			else {
+				particules = particules_buf;
+				obstacles = obstacles_buf;	
+				mpm_conf::dt_ /= 2;
+			}
+		}
+		else {
+			// normal case
+			bool failure = true;
+			while (failure) {
+				failure = Simulation::oneStepTry();
+				if (failure) {
+					particules_buf = particules;
+					obstacles_buf = obstacles;
+					mpm_conf::dt_ /= 2;
+					INFO(1, "current dt is " << mpm_conf::dt_);
+				}
+				else {
+					particules = particules_buf;
+					obstacles = obstacles_buf;	
+					failure = false;
+				}
+				printf("Stuck Inside the loop\n");
+			}
+		}
+		// oneStep();
 		if (export_)
 			exportSim();
-
 		for (auto &ob : obstacles)
 			ob->animate();
 
@@ -112,6 +164,64 @@ void Simulation::animate() {
 			}
 		} 
 	}
+}
+
+void Simulation::oneStep() {
+	Times::TIMES->tick(Times::simu_time_);
+	grid.nextStep(); //resets the grid for this step.
+	grid.particulesToGrid(particules);
+
+	// debug function to check on particles
+	// grid.checkParticles(particules);
+	// not needed to smooth the velocities
+	if (mpm_conf::smooth_vel_) {
+		for (uint i = 0; i < 1; ++i) {
+			grid.smoothVelocity();
+		}
+		INFO(3, "SMOOTH");
+	}
+	// grid based collisions
+	grid.collision(obstacles);
+	// sending information from grid to particles
+	grid.gridToParticules(particules);
+	grid.initCollision(obstacles);
+	Times::TIMES->tock(Times::simu_time_);
+}
+
+bool Simulation::oneStepTry() {
+
+	FLOAT vel_mag = 0;
+	for (uint ip = 0; ip < particules_buf.size(); ++ip) {
+		Particule *p = particules_buf[ip];
+		VEC3 p_vel = p->getVelocity();
+		vel_mag = std::max(p_vel.norm(), vel_mag);
+	}
+
+	bool valid = true;
+	Times::TIMES->tick(Times::simu_time_);
+	grid.nextStep(); //resets the grid for this step.
+	grid.particulesToGrid(particules_buf);
+
+	valid = valid and grid.checkGridAdapt(); // if something is blowing up return false
+
+	if (mpm_conf::smooth_vel_) {
+		for (uint i = 0; i < 1; ++i) {
+			grid.smoothVelocity();
+		}
+		INFO(3, "SMOOTH");
+	}
+	// grid based collisions
+	grid.collision(obstacles_buf);
+	valid = valid and grid.checkGridAdapt(); // if something is blowing up after collision
+
+	// sending information from grid to particles
+	grid.gridToParticules(particules_buf);
+	
+	bool particles_bool_adapt = grid.checkParticlesAdapt(particules_buf, vel_mag);
+	valid = valid and particles_bool_adapt;
+	
+	grid.initCollision(obstacles_buf);
+	return valid;
 }
 
 #ifndef NO_GRAPHICS_ 
@@ -141,34 +251,6 @@ void Simulation::draw(glm::mat4 m, int s) {
 	Times::TIMES->tock(Times::display_time_);
 }
 #endif
-
-void Simulation::oneStep() {
-	Times::TIMES->tick(Times::simu_time_);
-	grid.nextStep(); //resets the grid for this step.
-	// if (mpm_conf::implicit_) {
-	// 	grid.particulesToGridImplicite(particules);
-	// } else {
-	// 	grid.particulesToGrid(particules);
-	// 	// it performs force addition there itself
-	// }
-	grid.particulesToGrid(particules);
-
-	// debug function to check on particles
-	// grid.checkParticles(particules);
-	// not needed to smooth the velocities
-	if (mpm_conf::smooth_vel_) {
-		for (uint i = 0; i < 1; ++i) {
-			grid.smoothVelocity();
-		}
-		INFO(3, "SMOOTH");
-	}
-	// grid based collisions
-	grid.collision(obstacles);
-	// sending information from grid to particles
-	grid.gridToParticules(particules);
-	grid.initCollision(obstacles);
-	Times::TIMES->tock(Times::simu_time_);
-}
 
 void Simulation::importParticules(std::ifstream & file) {
 	particules.clear();

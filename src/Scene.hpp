@@ -96,7 +96,7 @@ private:
 	std::vector<Texture*> l_textures;
 	//std::vector<glm::mat4>  l_model_views;
 
-	std::list<Object*> l_objects;
+	std::list<Object*> l_objects; // stores just the simulation pointer
 	Simulation *sim;
 
 	unsigned int m_frameRate;

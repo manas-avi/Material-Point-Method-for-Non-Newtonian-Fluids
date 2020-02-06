@@ -27,7 +27,9 @@ private :
   
   Grid grid;
   std::vector<Particule*> particules;
+  std::vector<Particule*> particules_buf; // additional particules for adaptive time stepping
   std::list<Obstacle*> obstacles;
+  std::list<Obstacle*> obstacles_buf; // additional particules for adaptive time stepping
 
   inline FLOAT weight(FLOAT x);
 public :
@@ -59,10 +61,9 @@ public :
   void setScene(std::string s);
   
   void backward(uint n);
-  //TODO
-  void initPoissonSampling(uint i1, uint i2, uint j1, uint j2, uint k1, uint k2);
-
   void loadScene();
+  bool oneStepTry();
+
 };
 
 

@@ -8,6 +8,7 @@
 #include "Eigen/Core"
 #include "Particule.hpp"
 #include "Obstacle.hpp"
+#include <algorithm>
 
 using namespace Eigen;
 
@@ -75,6 +76,9 @@ public :
   void collision(std::list<Obstacle*> obstacles);
     
   MAT3 secondDer(uint i, uint j, std::vector<Particule*> & particules);
+
+  bool checkGridAdapt();
+  bool checkParticlesAdapt(std::vector<Particule*> & particules, FLOAT vel_mag_buf);
 
 };
 
