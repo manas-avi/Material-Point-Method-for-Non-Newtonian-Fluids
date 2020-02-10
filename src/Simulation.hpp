@@ -28,8 +28,8 @@ private :
   Grid grid;
   std::vector<Particule*> particules;
   std::vector<Particule*> particules_buf; // additional particules for adaptive time stepping
-  std::list<Obstacle*> obstacles;
-  std::list<Obstacle*> obstacles_buf; // additional particules for adaptive time stepping
+  std::vector<Obstacle*> obstacles;
+  std::vector<Obstacle*> obstacles_buf; // additional particules for adaptive time stepping
 
   inline FLOAT weight(FLOAT x);
 public :
@@ -63,6 +63,8 @@ public :
   void backward(uint n);
   void loadScene();
   bool oneStepTry();
+  void Vectorcopy(std::vector<Particule*> & l, std::vector<Particule*> r);
+  // void Obstaclecopy(std::vector<Obstacle*> & l, std::vector<Obstacle*> r);
 
 };
 

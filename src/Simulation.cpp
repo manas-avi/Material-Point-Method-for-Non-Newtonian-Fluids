@@ -67,7 +67,7 @@ void Simulation::init() {
 			Particule *p = particules[ip]; 
 			Particule *np = new Particule(p->getMass(), p->getVolume(),p->getPosition(),
 							 VEC3(0, 0, 1), p->getVelocity());
-			particules_buf.push_back(np);
+			particules_buf[ip] = np;
 		}
 		// particules_buf = particules;
 		obstacles_buf = obstacles;
@@ -110,6 +110,39 @@ void Simulation::clear() {
 	obstacles_buf.clear();
 }
 
+void Simulation::Vectorcopy(std::vector<Particule*> & l, std::vector<Particule*> r) {
+	// copy right list to left list
+	#pragma omp parallel for
+	for (uint ip = 0; ip < l.size(); ++ip) {
+		Particule *p = l[ip];
+		delete p; 
+	}
+	l.clear();
+	l.resize(r.size());
+	#pragma omp parallel for
+	for (uint ip = 0; ip < r.size(); ++ip) {
+		Particule *p = r[ip]; 
+		Particule *np = new Particule(p->getMass(), p->getVolume(),p->getPosition(),
+						 VEC3(0, 0, 1), p->getVelocity());
+		l[ip] = np;
+	}
+}
+
+// void Simulation::Obstaclecopy(std::vector<Obstacle*> & l, std::vector<Obstacle*> r) {
+// 	printf("size of l is %d\n", l.size());
+// 	for (auto& p : l) {
+// 		delete p;
+// 	}
+// 	l.clear();
+// 	l.resize(r.size());
+// 	printf("size of r is %d\n", l.size());
+// 	for (uint ip = 0; ip < r.size(); ++ip) {
+// 		Obstacle p = *r[ip]; 
+// 		l[ip] = &p;
+// 	}
+// }
+
+
 void Simulation::animate() {
 	++t;
 	INFO(1, "Simulation step : "<< t << " and current dt is " << mpm_conf::dt_);
@@ -118,38 +151,42 @@ void Simulation::animate() {
 		if (t%mpm_conf::adapt_step_ == 0 and mpm_conf::adapt_step_bool_) {
 			// try oneStep with increased dt 
 			mpm_conf::dt_ *= 2;
+			INFO(1, "current dt is " << mpm_conf::dt_);
 			if (not Simulation::oneStepTry()) {
 				// copy particules from r to l
-				// copy(particules_buf, particules);
-				particules_buf = particules;
+				Vectorcopy(particules_buf, particules);
 				obstacles_buf = obstacles;
 			}
 			else {
-				particules = particules_buf;
-				obstacles = obstacles_buf;	
+				Vectorcopy(particules, particules_buf);
+				obstacles = obstacles_buf;
 				mpm_conf::dt_ /= 2;
+				INFO(1, "current dt is " << mpm_conf::dt_);
 			}
 		}
-		else {
-			// normal case
+		// normal case
+		if (mpm_conf::adapt_step_bool_) {
 			bool failure = true;
 			while (failure) {
 				failure = Simulation::oneStepTry();
 				if (failure) {
-					particules_buf = particules;
+					// here things are updated based on particules_buf
+					Vectorcopy(particules_buf, particules);
 					obstacles_buf = obstacles;
 					mpm_conf::dt_ /= 2;
 					INFO(1, "current dt is " << mpm_conf::dt_);
 				}
 				else {
-					particules = particules_buf;
+					Vectorcopy(particules, particules_buf);
 					obstacles = obstacles_buf;	
 					failure = false;
 				}
-				printf("Stuck Inside the loop\n");
+				printf("faiilure %d Stuck Inside the loop\n", failure);
 			}
 		}
-		// oneStep();
+		else {
+			oneStep();
+		}
 		if (export_)
 			exportSim();
 		for (auto &ob : obstacles)
@@ -166,14 +203,82 @@ void Simulation::animate() {
 	}
 }
 
+
+bool Simulation::oneStepTry() {
+
+	// FLOAT vel_mag = 0;
+	// FLOAT vel_min = 10000;
+	FLOAT max_j = 0;
+	FLOAT min_j = 10000;
+
+	// printf("particules_buf size 0 is %d\n", particules_buf.size());
+
+	bool failure = false;
+	Times::TIMES->tick(Times::simu_time_);
+	grid.nextStep(); //resets the grid for this step.
+	grid.particulesToGrid(particules_buf);
+	for (uint ip = 0; ip < particules.size(); ++ip) {
+		Particule *p = particules[ip];
+		// VEC3 p_vel = p->getVelocity();
+		// vel_mag = std::max(p_vel.norm(), vel_mag);
+		// vel_min = std::min(p_vel.norm(), vel_min);
+		FLOAT J = (p->getDeformation()).determinant();
+		max_j = std::max(max_j, J);
+		min_j = std::min(min_j, J);
+	}
+	failure = failure or grid.checkParticlesAdapt(particules_buf, max_j, min_j);
+
+	// FLOAT max_vel_pre = 0;
+	// FLOAT min_vel_pre = 10000;
+
+	// failure = failure or grid.checkGridAdapt(max_vel_pre, min_vel_pre); // if something is blowing up return false
+	if (mpm_conf::smooth_vel_) {
+		for (uint i = 0; i < 1; ++i) {
+			grid.smoothVelocity();
+		}
+		INFO(3, "SMOOTH");
+	}
+	// grid based collisions
+	grid.collision(obstacles_buf);
+	grid.gridToParticules(particules_buf);
+	grid.initCollision(obstacles_buf);
+
+	max_j = 0;
+	min_j = 10000;
+	for (uint ip = 0; ip < particules.size(); ++ip) {
+		Particule *p = particules[ip];
+		// VEC3 p_vel = p->getVelocity();
+		// vel_mag = std::max(p_vel.norm(), vel_mag);
+		// vel_min = std::min(p_vel.norm(), vel_min);
+		FLOAT J = (p->getDeformation()).determinant();
+		max_j = std::max(max_j, J);	
+		min_j = std::min(min_j, J);	
+	}
+	failure = failure or grid.checkParticlesAdapt(particules_buf, max_j, min_j);
+	Times::TIMES->tock(Times::simu_time_);
+	return failure;
+	
+	// FLOAT max_vel_cur = 0;
+	// FLOAT min_vel_cur = 10000;
+	// failure = failure or grid.checkGridAdapt(max_vel_cur, min_vel_cur); // if something is blowing up after collision
+
+	// // not a good matrix does not help and leads to stuck in loop
+	// if (max_vel_cur > max_vel_pre * 2)
+	// 	failure = failure or true;
+	// if (min_vel_cur < min_vel_pre * 0.9)
+	// 	failure = failure or true;
+
+	// sending information from grid to particles
+	
+	// vel_mag = 0;
+	// vel_min = 10000;
+}
+
 void Simulation::oneStep() {
 	Times::TIMES->tick(Times::simu_time_);
 	grid.nextStep(); //resets the grid for this step.
 	grid.particulesToGrid(particules);
 
-	// debug function to check on particles
-	// grid.checkParticles(particules);
-	// not needed to smooth the velocities
 	if (mpm_conf::smooth_vel_) {
 		for (uint i = 0; i < 1; ++i) {
 			grid.smoothVelocity();
@@ -186,42 +291,6 @@ void Simulation::oneStep() {
 	grid.gridToParticules(particules);
 	grid.initCollision(obstacles);
 	Times::TIMES->tock(Times::simu_time_);
-}
-
-bool Simulation::oneStepTry() {
-
-	FLOAT vel_mag = 0;
-	for (uint ip = 0; ip < particules_buf.size(); ++ip) {
-		Particule *p = particules_buf[ip];
-		VEC3 p_vel = p->getVelocity();
-		vel_mag = std::max(p_vel.norm(), vel_mag);
-	}
-
-	bool valid = true;
-	Times::TIMES->tick(Times::simu_time_);
-	grid.nextStep(); //resets the grid for this step.
-	grid.particulesToGrid(particules_buf);
-
-	valid = valid and grid.checkGridAdapt(); // if something is blowing up return false
-
-	if (mpm_conf::smooth_vel_) {
-		for (uint i = 0; i < 1; ++i) {
-			grid.smoothVelocity();
-		}
-		INFO(3, "SMOOTH");
-	}
-	// grid based collisions
-	grid.collision(obstacles_buf);
-	valid = valid and grid.checkGridAdapt(); // if something is blowing up after collision
-
-	// sending information from grid to particles
-	grid.gridToParticules(particules_buf);
-	
-	bool particles_bool_adapt = grid.checkParticlesAdapt(particules_buf, vel_mag);
-	valid = valid and particles_bool_adapt;
-	
-	grid.initCollision(obstacles_buf);
-	return valid;
 }
 
 #ifndef NO_GRAPHICS_ 

@@ -31,10 +31,12 @@ private :
 
   std::vector<FLOAT> masses;
   std::vector<bool> active_nodes;
+  std::vector<bool> active_nodes_buf;
   std::vector<VEC3> velocities;
   std::vector<VEC3> inter_velocities;
   std::vector<VEC3> prev_velocities;
   std::vector<VEC3> positions;
+  std::vector<VEC3> positions_buf;
   std::vector<VEC3> new_positions;
   std::vector<std::list<Particule*> > cells; // contains list of particles in that cell
   std::vector<FLOAT> distance_collision;
@@ -72,13 +74,16 @@ public :
   // void initCollision(Obstacle *ob);
   // void collision(Obstacle *ob);
   // using all the obstacles increases the speed
-  void initCollision(std::list<Obstacle*> obstacles);
-  void collision(std::list<Obstacle*> obstacles);
+  void initCollision(std::vector<Obstacle*> obstacles);
+  void collision(std::vector<Obstacle*> obstacles);
     
   MAT3 secondDer(uint i, uint j, std::vector<Particule*> & particules);
 
-  bool checkGridAdapt();
-  bool checkParticlesAdapt(std::vector<Particule*> & particules, FLOAT vel_mag_buf);
+  bool checkGridAdapt(FLOAT &a, FLOAT &b);
+  bool checkParticlesAdapt(std::vector<Particule*> & particules_buf, FLOAT max_j, FLOAT min_j);
+
+  // void updatebuf();
+  // void revertbuf();
 
 };
 

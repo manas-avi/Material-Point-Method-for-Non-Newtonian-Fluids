@@ -75,7 +75,7 @@ namespace mpm_conf {
 	bool enable_debugging = false;
 
 	bool adapt_step_bool_ = false;
-	uint adapt_step_ = 0;
+	uint adapt_step_ = 1000000;
 	
 	uint export_step_ = 1;
 	

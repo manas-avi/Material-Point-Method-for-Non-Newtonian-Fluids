@@ -36,9 +36,9 @@ m_hauteurFenetre(hauteurFenetre), m_window(0), m_contexteOpenGL(0), m_input() {
 }
 
 Scene::~Scene() {
-	std::list<Object*>::iterator it;
-	for (it = l_objects.begin(); it != l_objects.end(); ++it) {
-		delete (*it);
+	std::vector<Object*>::iterator it;
+	for (auto& o : l_objects) {
+		delete o;
 	}
 	std::vector<Shader*>::iterator its;
 	for (its = l_shaders.begin(); its != l_shaders.end(); ++its) {
@@ -178,10 +178,13 @@ void Scene::animate() {
 
 	if (running || step_by_step > 0) {
 		t += mpm_conf::replay_speed_;
-		std::list<Object*>::iterator it;
-		for (it = l_objects.begin(); it != l_objects.end(); ++it) {
-			(*it)->animate();
+		std::vector<Object*>::iterator it;
+		for (auto& o : l_objects) {
+			o->animate();
 		}
+		// for (it = l_objects.begin(); it != l_objects.end(); ++it) {
+			// (*it)->animate();
+		// }
 	}
 	if (step_by_step > 0) {
 		--step_by_step;

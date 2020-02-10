@@ -490,7 +490,6 @@ void Grid::particulesToGrid(std::vector<Particule*> & particules) {
 
 // debug function to check on particles
 void Grid::checkParticles(std::vector<Particule*> & particules) {
-	// #pragma omp parallel for
 	for (uint ip = 0; ip < particules.size(); ++ip) {
 		Particule *p = particules[ip];
 		Vector3i cell = p->getCell();
@@ -710,7 +709,24 @@ void Grid::init(std::vector<Particule*> & particules) {
 	}
 }
 
-void Grid::initCollision(std::list<Obstacle*> obstacles) {
+
+// void Grid::updatebuf() {
+// 	#pragma omp parallel for
+// 	for (uint i = 0; i < nb_nodes; ++i) {
+// 		bool val = active_nodes[i];
+// 		active_nodes_buf[i] = val;
+// 	}
+// }
+
+// void Grid::revertbuf() {
+// 	#pragma omp parallel for
+// 	for (uint i = 0; i < nb_nodes; ++i) {
+// 		bool val = active_nodes_buf[i];
+// 		active_nodes[i] = val;
+// 	}
+// }
+
+void Grid::initCollision(std::vector<Obstacle*> obstacles) {
 	#pragma omp parallel for
 	for (uint i = 0; i < nb_nodes; ++i) {
 		distance_collision[i] = 100; // some big distance
@@ -722,9 +738,10 @@ void Grid::initCollision(std::list<Obstacle*> obstacles) {
 			}
 		}
 	}
+	printf("I am here\n");
 }
 
-void Grid::collision(std::list<Obstacle*> obstacles) {
+void Grid::collision(std::vector<Obstacle*> obstacles) {
 	// INFO(2, "Collision");
 	// TODO try to improve how collision is handeled
 	#pragma omp parallel for
@@ -751,8 +768,8 @@ void Grid::collision(std::list<Obstacle*> obstacles) {
 			// while d is with updated positions
 
 			// TODO there is a problem with this method if the obstacle is very thin and it may get out of the other boundary
-		    FLOAT dcomp = d - std::min(distance_collision[i],(FLOAT)0.0);
-  		    if (fabs(d) <= 1*mpm_conf::grid_spacing_ && dcomp < 0) { // there is collision and it is not seprating
+			FLOAT dcomp = d - std::min(distance_collision[i],(FLOAT)0.0);
+  		    if (fabs(d) <= 1*mpm_conf::grid_spacing_ and dcomp < 0) { // there is collision and it is not seprating
 				// IF IT IS LESS THEN A CERTAIN DISTANCE THEN adjust the velocities
 				// so that it can come back to the surface
 		      	FLOAT dv = -dcomp/mpm_conf::dt_;
@@ -771,27 +788,85 @@ void Grid::collision(std::list<Obstacle*> obstacles) {
 	}
 }
 
-bool Grid::checkParticlesAdapt(std::vector<Particule*> & particules, FLOAT vel_mag_buf) {
+bool Grid::checkParticlesAdapt(std::vector<Particule*> & particules_buf, FLOAT max_j, FLOAT min_j) {
 	// TODO FILL THIS WITH USEFUL CRITERION
-	bool fail = false;
-	FLOAT vel_mag = 0;
-	// #pragma omp parallel for
-	for (uint ip = 0; ip < particules.size(); ++ip) {
-		Particule *p = particules[ip];
-		VEC3 p_vel = p->getVelocity();
-		vel_mag = std::max(p_vel.norm(), vel_mag);
+	// // first criterion with velocity was not so useful
+	// bool fail = false;
+	// FLOAT vel_mag_buf = 0;
+	// FLOAT vel_min_buf = 10000;
+
+	// for (uint ip = 0; ip < particules_buf.size(); ++ip) {
+	// 	Particule *p = particules_buf[ip];
+	// 	VEC3 p_vel = p->getVelocity();
+	// 	vel_mag_buf = std::max(p_vel.norm(), vel_mag_buf);
+	// 	vel_min_buf = std::min(p_vel.norm(), vel_min_buf);
+	// }
+	// printf("vel mag buf is %f\n", fabs(vel_mag_buf));
+	// printf("vel mag is %f\n", fabs(vel_mag));
+	// printf("abs vel diff is %f\n", fabs(vel_mag - vel_mag_buf));
+
+
+	// printf("vel min buf is %f\n", fabs(vel_min_buf));
+	// printf("vel min is %f\n", fabs(vel_min));
+	// printf("abs vel diff is %f\n", fabs(vel_min - vel_min_buf));
+
+	// // vel_mag is previous high velocity
+	// // vel_mag_buf is the current high velocity
+	// // if (vel_mag_buf - vel_mag > 1)
+	// if (vel_mag_buf > vel_mag * 2)
+	// 	return true;
+	// if (vel_min_buf < vel_min * 0.9)
+	// 	return true;
+
+	// // second critertion with stress value
+	FLOAT max_j_buf = 0;
+	FLOAT min_j_buf = 10000;
+	for (uint ip = 0; ip < particules_buf.size(); ++ip) {
+		Particule *p = particules_buf[ip];
+		FLOAT J = (p->getDeformation()).determinant();
+		max_j_buf = std::max(max_j_buf, J);
+		min_j_buf = std::min(min_j_buf, J);
 	}
-	printf("vel mag is %f\n", fabs(vel_mag ));
-	printf("vel mag is %f\n", fabs(vel_mag_buf));
-	if (fabs(vel_mag - vel_mag_buf) > 1)
+	printf("the value of max_j_buf is %f\n", max_j_buf);
+	printf("the value of max_j is %f\n", max_j);
+	printf("abs max diff is %f\n", fabs(max_j - max_j_buf));
+	if (max_j_buf > max_j * 1.01)
 		return true;
+
+	printf("the value of min_j_buf is %f\n", min_j_buf);
+	printf("the value of min_j is %f\n", min_j);
+	printf("abs min diff is %f\n", fabs(min_j - min_j_buf));
+	if (max_j_buf > max_j * 1.1)
+		return true;
+	if (min_j_buf < min_j * 0.9)
+		return true;
+
 	return false;
 
 }
 
-bool Grid::checkGridAdapt() {
+bool Grid::checkGridAdapt(FLOAT &max_vel, FLOAT &min_vel) {
 	// TODO FILL THIS WITH USEFUL CRITERION
-	return true;
+	// #pragma omp parallel for
+	// uint co = 0;
+	for (uint i = 0; i < nb_nodes; ++i) {
+		if (active_nodes[i]) {
+			max_vel = std::max(velocities[i].norm(), max_vel);
+			min_vel = std::min(velocities[i].norm(), min_vel);
+			// if (min_vel < 1e-4){
+			// 	// co++;
+			// 	printf("something is wrong\n");
+			// }
+		}
+	}
+	// if (co >= 1)
+	// {
+	// 	printf("something was wrong %d times\n", co);
+	// 	exit(1);
+	// }
+	// printf("GRID max val is %f\n", max_vel);
+	// printf("GRID min val is %f\n", min_vel);
+	return false;
 }
 
 
@@ -844,326 +919,5 @@ MAT3 Grid::secondDer(uint i, uint j, std::vector<Particule*> & particules) {
 			}
 		}
 	}
-
 	return second_der;
 }
-
-	// CRAP CODE ---->
-
-  //  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, vertices);
-  //  glEnableVertexAttribArray(0);
-
-  //  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, colors);
-  //  glEnableVertexAttribArray(1);
-
-  //  glDrawArrays(GL_LINES, 0, nb_lines*2);
-
-  //  glDisableVertexAttribArray(0);
-  //  glDisableVertexAttribArray(1);
-
-  //  disableShader();
-
-
-  //  }
-  //     INFO(3, "seconde der\n"<<second_der);
-  // TEST(second_der == second_der.transpose());
-  // for (uint u = 0; u < 3; ++u) {
-  //   for (uint v = 0; v < 3; ++v) {
-  //     if (std::fabs(second_der(u, v) -second_der(v, u)) > 0.00001) {
-  //       INFO(3, "seconde der\n"<<second_der);
-  //       //   INFO(3, "F\n"<<F);
-  //       TEST(false);
-  //     }
-  //   }
-  // }
-
-
-  	// //INFO(3, masses[ind]);
-  	 // Sphere sp(0.01*masses[ind], Scene::SCENE->getShader(0));
-  	 //  sp.setColor(0, 1, 0);
-  	 //  if (active_nodes[ind]) {
-  	 //    sp.setColor(1, 0, 0);
-  	 //  }
-  	 // glm::mat4 model = translate(glm::mat4(1.0f), glm::vec3(pos(0), pos(1), pos(2)));
-  	 // glm::mat4 cur_model = model * m_model_view;
-  	 // 	 sp.draw(cur_model, Scene::SCENE->getShader(0));
-  	   //   INFO(3, "vel "<<vel(0)<<", "<<vel(1)<<", "<<vel(2));
-  	 //   //assert(false);
-  	 // }
-
-// void Grid::collision(Obstacle *ob) {
-
-// 	// THIS COLLISION FUNCTION IS NOT USED ---> REMOVE IT TODO
-// 	// INFO(2, "Collision");
-// 	#pragma omp parallel for
-// 	for (uint i = 0; i < nb_nodes; ++i) {
-// 		if (active_nodes[i]) {
-// 			VEC3 pos = positions[i] + mpm_conf::dt_*velocities[i];
-// 			VEC3 n;// = ob->getNormal(pos);
-// 		    FLOAT d;// = ob->distance(pos);
-// 		    ob->getCollisionValues(pos, d, n);
-// 		    FLOAT dcomp = d - std::min(distance_collision[i],(FLOAT)0.0);
-      
-// 		    //  distance_collision[i] = ob->distance(positions[i]);
-// 		    if (fabs(d) <= 4*mpm_conf::grid_spacing_ && dcomp < 0) {
-// 		      	VEC3 vel_prev = velocities[i];
-// 				// INFO(3,"vel prev "<< velocities[i](0)<<" "<< velocities[i](1)<<" "<< velocities[i](2));
-// 				// VEC3 n = ob->getNormal(pos);
-// 		      	FLOAT dv = -dcomp/mpm_conf::dt_;
-// 			  	velocities[i] += dv*n;//dcomp*ob->getNormal(pos)/mpm_conf::dt_;
-
-// 				//INFO(3,"vel new\n"<< velocities[i]);
-
-// 				//friction
-// 				VEC3 vt = velocities[i] - velocities[i].dot(n)*n;
-// 				FLOAT nvt = vt.norm();
-
-// 				if (nvt > ob->getFriction()*dv) {
-// 					// INFO(3, "nvt dv" <<nvt<<" "<<dv);
-// 				  	velocities[i] -= ob->getFriction()*dv*vt/nvt;
-// 				} else {
-// 				  	velocities[i] -= vt;
-// 					// INFO(3, "vt\n"<<vt);
-// 				}
-	  
-// 			// INFO(3,"vel new "<< velocities[i](0)<<" "<< velocities[i](1)<<" "<< velocities[i](2));
-// 			// INFO(3,"vel norm"<< velocities[i].norm()<<" "<<vel_prev.norm());
-// 			// TEST(velocities[i].norm() <= vel_prev.norm()); 
-// 			}
-// 		}
-// 		    // FLOAT d = ob->distance(positions[i]);
-// 		    // if (fabs(d) < fabs( distance_collision[i])) {
-// 		    // //if (d < distance_collision[i]) {
-// 		    //   distance_collision[i] = d;
-// 		    // }
-// 	}
-// 	//  INFO(2, "END Collision");
-// }
-
-// void Grid::initCollision(Obstacle *ob) {
-// 	#pragma omp parallel for
-// 	for (uint i = 0; i < nb_nodes; ++i) {
-// 		FLOAT d = ob->distance(positions[i]);
-// 		if (fabs(d) < fabs( distance_collision[i])) {
-// 			distance_collision[i] = d;
-// 		}
-// 	}
-// }
-
-
-
-// // TODO try to convert the code to implicit integeration
-// void Grid::particulesToGridImplicite(std::vector<Particule*> & particules) {
-//   //  INFO(3, "IMPLICIT");
-//   //  INFO(2, "Part 2 Grid");
-//    // INFO(3, particules.front()->getVelocity());
-// 	for (auto &p : particules) {
-// 		Vector3i c = p->getCell();
-// 		uint ind = c(0)*j_max*k_max + c(1)*(k_max) + c(2);
-// 		if (ind < nb_cells) {
-// 			cells[ind].push_back(p);
-// 		}   
-// 	}
-
-// 	uint nb_ac = 0;
-// 	for (uint i = 0; i < cells.size(); ++i) {
-// 		if (cells[i].size() != 0) {
-// 			++nb_ac;
-// 		}
-// 	}
-
-//   // INFO(2, "Part 2 Grid");
-//   // INFO(3, particules.front()->getVelocity());
-// 	FLOAT s2 = mpm_conf::grid_spacing_*mpm_conf::grid_spacing_;
-// 	#pragma omp parallel for
-// 	for (int i = 0; i <= (int)i_max; ++i) {
-// 		for (int j = 0; j <= (int)j_max; ++j) {
-// 			for (int k = 0; k <= (int)k_max; ++k) {
-// 				uint ind = index(i, j, k);
-// 				VEC3 f(0, 0, 0);
-// 				for (int l = i - 2; l < i + 2; ++l) {
-// 					if (l >= 0 && l < (int)i_max) {
-// 						for (int m = j - 2; m < j + 2; ++m) {
-// 							if (m >= 0 && m < (int)j_max) {
-// 								for (int n = k - 2; n < k + 2; ++n) {
-// 									if (n >= 0 && n < (int)k_max) {
-// 										uint indc = l*j_max*k_max + m*(k_max) + n;
-// 										for (auto& p : cells[indc]) {
-
-// 											FLOAT w = p->weight(Vector3i(i, j, k));
-// 											if (w > 0) {
-// 												active_nodes[ind] = true;
-// 												masses[ind] += w*p->getMass();
-// 												if (mpm_conf::method_ == mpm_conf::apic_) {
-// 			// MAT3 C = 3.0/s2*p->getB();
-// 			// MAT3 C_skew = 0.5*(C - C.transpose());
-// 			// MAT3 C_sym = 0.5*(C + C.transpose());
-// 			// FLOAT v = 1;
-// 			//  velocities[ind] += w*p->getMass()*(p->getVelocity() + (C_skew + (1-v)*C_sym)*(positions[ind] - 
-// 			// p->getPosition()));
-// 													velocities[ind] += w*p->getMass()*(p->getVelocity() 
-// 														+ 3.0/s2*p->getB()*(positions[ind] - p->getPosition()));
-// 												} else {
-// 													velocities[ind] += w*p->getMass()*p->getVelocity();
-// 												}
-// 												IS_DEF(velocities[ind](0));
-// 												VEC3 incrf = p->getForceIncrement()*p->gradWeight(Vector3i(i, j, k));
-// 												if (!std::isnan(incrf(0)) && !std::isinf(incrf(0))) {
-// 													f += incrf;
-// 												}
-// 												IS_DEF(f(0));
-// 											}
-// 										}
-// 									}
-// 								}
-// 							}
-// 						}
-// 					}
-// 				}
-// 				if (active_nodes[ind]) {
-// 					IS_DEF(velocities[ind](0));
-// 					if (masses[ind] > /*1e-8*mpm_conf::dt_*/0) {
-// 					    //  IS_DEF(f(0));
-// 					if (std::isnan(f(0)) || std::isinf(f(0))) {
-// 						f = VEC3(0, 0, 0);
-// 					}
-// 					velocities[ind] -= mpm_conf::dt_*f + mpm_conf::dt_*mpm_conf::damping_*velocities[ind];
-// 					velocities[ind] /= masses[ind];
-// 				} else {
-// 					velocities[ind] = VEC3(0, 0, 0);
-// 				}
-// 					IS_DEF(velocities[ind](0));
-// 					// velocities[ind] += mpm_conf::dt_*mpm_conf::gravity_;
-// 					inter_velocities[ind] = velocities[ind];//particules.front()->gradWeight(Vector3i(i, j, k));
-// 					new_positions[ind] = positions[ind] + mpm_conf::dt_*velocities[ind];
-// 					// inter_velocities[ind] =  velocities[ind];//particules.front()->gradWeight(Vector3i(i, j, k));
-// 					// INFO(3, "vel\n" << velocities[ind]);
-// 					// INFO(3, "density "<<masses[ind]/pow(mpm_conf::grid_spacing_, 3));
-// 					IS_DEF(velocities[ind](0));
-// 				}
-// 			}
-// 		}
-// 	}
-// 	uint n_active = 0;
-// 	for (uint i = 0; i < nb_nodes; ++i) {
-// 	    if (active_nodes[i] /*&& masses[i] > 1e-15*mpm_conf::dt_*/) {
-// 			++n_active;
-// 		}
-// 	}
-// 	std::vector<uint> l_index(n_active);
-// 	uint inde = 0;
-// 	for (uint i = 0; i < nb_nodes; ++i) {
-// 	    if (active_nodes[i] /*&& masses[i] > 1e-15*mpm_conf::dt_*/) {
-// 			l_index[inde] = i;
-// 		      //INFO(3, "prev index "<<i);
-// 			++inde;
-// 		}
-// 	}
-
-// 	MATX K(3*n_active, 3*n_active);
-// 	FLOAT beta = 0.5;
-// 	#pragma omp parallel for
-// 	for (uint i = 0; i < 3*n_active; ++i) {
-// 		for (uint j = 0; j < 3*n_active; ++j) {
-// 			K(i, j) = 0;
-// 		}
-// 	}
-// 	INFO(3, "nb nodes  " <<nb_nodes<<" "<<n_active<<" "<<Eigen::nbThreads( ));
-
-// 	#pragma omp parallel for
-// 	for (uint i = 0; i < n_active; ++i) {
-// 		uint index1 = l_index[i];
-// 		//	if (active_nodes[i] && masses[i] > 1e-8*mpm_conf::dt_*mpm_conf::dt_) {
-// 		for (uint l = 0; l < 3; ++l) {
-// 			K(3*i + l, 3*i + l) = masses[index1];//1.0;
-// 		}
-// 		//  INFO(3, "index "<<index1<<" "<<l_index[10]);
-// 		for (uint j = i; j < n_active; ++j) {
-// 		  	uint index2 = l_index[j];
-// 		  	bool close_enough = true;
-// 		  	Vector3i indi = nodeFromIndex(index1);
-// 		  	Vector3i indj = nodeFromIndex(index2);
-// 		  	for (uint k = 0; k < 3; ++k) {
-// 		  		close_enough = close_enough && std::abs(indj(k) - indi(k)) <= 2;
-// 		  	}
-// 		  	if (close_enough) {
-// 				// if (active_nodes[j] && masses[j] > 1e-8*mpm_conf::dt_*mpm_conf::dt_) {
-// 				MAT3 second_der = secondDer(index1, index2, particules);
-// 				//  MAT3 second_der2 = secondDer(index2, index1, particules);
-// 				MAT3 Kij = beta * mpm_conf::dt_*mpm_conf::dt_/*masses[index1]*/*second_der;
-// 				// if (i < j) {
-// 				//   INFO(3, "Kij\n"<<Kij);
-// 				// }
-// 		  		for (uint l = 0; l < 3; ++l) {
-// 		  			for (uint m = 0; m < 3; ++m) {
-// 		  				K(3*i + l, 3*j + m) += Kij(l, m);
-// 		  				K(3*j + m, 3*i + l) += Kij(l, m);
-// 					// if (std::fabs(second_der(l, m) - second_der2(m, l)) > 0.01) {
-// 					//   	INFO(3, "i, j  der der2 "<<i<<" "<<j<<"\n"<<second_der<<"\n\n"<<second_der2);
-// 					//   	//TEST(false);
-// 					//   }
-// 		  				IS_DEF(K(3*i + l, 3*j + m));
-// 		  			}
-// 		  		}
-// 		  	}
-// 		}
-// 	}
-
-// 	VECX V(3*n_active);
-// 	VECX V_prev(3*n_active);
-// 	#pragma omp parallel for  
-// 	for (uint i = 0; i < n_active; ++i) {
-// 		uint ind = l_index[i];
-// 	    // if (active_nodes[i]  && masses[i] > 1e-8*mpm_conf::dt_*mpm_conf::dt_) {
-// 		for (uint l = 0; l < 3; ++l) {
-// 			IS_DEF(velocities[ind](l));
-// 			V(3*i + l) = masses[ind]*velocities[ind](l);
-// 	    	V_prev(3*i + l) = velocities[ind](l);// - mpm_conf::dt_*mpm_conf::gravity_(l);
-// 	    	IS_DEF(velocities[ind](l));
-// 	    	IS_DEF(V(3*i + l));
-// 		}
-// 	    // ++ind;
-// 	    //}
-// 	}
-
-//   //INFO(3, K);
-// 	INFO(3, "prev vel"<<V(90)<<" "<<V(91)<<" "<<V(92));
-// 	// INFO(3, "prev vel"<<V(90)/ masses[ l_index[30]]<<" "<<V(91)/
-// 	 // masses[ l_index[30]]<<" "<<V(92)/ masses[ l_index[30]]);
-// 	//INFO(3, "part vel\n"<<particules.front()->getVelocity());
-// 	//INFO(3, "prev vel\n"<<velocities[10]);
-// 	ConjugateGradient<MATX, Lower|Upper> cg(K);
-//   // BiCGSTAB<MATX> cg;
-// 	cg.setMaxIterations(512);
-// 	cg.compute(K);
-// 	VECX new_V(3*n_active);
-// 	new_V = cg.solveWithGuess(V, V_prev);
-// 	  //new_V = cg.solve(V);
-// 	std::cout << "#iterations:     " << cg.iterations() << std::endl;
-// 	std::cout << "estimated error: " << cg.error()      << std::endl;
-// 	INFO(3, "IMPLICIT: size of K "<< n_active);
-
-// 	#pragma omp parallel for  
-// 	for (uint i = 0; i < n_active; ++i) {
-// 		uint ind = l_index[i];
-// 		// if (active_nodes[i] && masses[i] > 1e-8*mpm_conf::dt_*mpm_conf::dt_) {
-// 		for (uint k = 0; k < 3; ++k) {
-// 			velocities[ind](k) = new_V(3*i+k);
-// 		// if (std::fabs(new_V(3*i+k)) < 1e-12) {
-// 		//   velocities[ind](k) = 0;
-// 		// }
-// 			IS_DEF(velocities[ind](k));
-// 		}
-// 		velocities[ind] += mpm_conf::dt_*mpm_conf::gravity_;
-// 		// INFO(3, "vel\n" << velocities[ind]);
-// 		// INFO(3, "prev vel " << V_prev(3*i)<<" "<<V_prev(3*i + 1)<<" "<<V_prev(3*i + 2));
-// 	    inter_velocities[i] = velocities[i];//particules.front()->gradWeight(Vector3i(i, j, k));
-// 	    new_positions[ind] = positions[ind] + mpm_conf::dt_*velocities[ind];
-// 	    IS_DEF(velocities[ind](0));
-// 	    //     ++ind;
-// 	    //}
-// 	}
-// 	//   INFO(3, "up vel"<<new_V(90)<<" "<<new_V(91)<<" "<<new_V(92));
-// 	// TEST(std::fabs(V(90)/ masses[ l_index[30]] - new_V(90)) < 0.00000001);
-// 	// INFO(2, "END Part 2 Grid");
-// }
