@@ -53,7 +53,7 @@ public :
   void importParticules(std::ifstream & file);
   void exportParticules(std::ofstream & file) const;
   void importSim();
-  void exportSim() const;
+  void exportSim() ;
 
 
   void setLoad(std::string s);

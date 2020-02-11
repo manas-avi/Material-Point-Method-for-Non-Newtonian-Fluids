@@ -314,8 +314,8 @@ void Scene::bouclePrincipale() { // main loop
 		INFO(2, "WALL CLOCK TIME IS ---------" << time_elapsed);
 		INFO(2, "SIM TIME IS ---------" << time_elapsed);
 
-		sim_time += t*mpm_conf::dt_; // have to save dt_ as well too much work 
-		// if (sim_time > frame_step and mpm_conf::save_img)
+		sim_time += mpm_conf::dt_; 
+
 		if (t%mpm_conf::export_step_ == 0 and mpm_conf::save_img)
 		{
 			frame_step += frame_step_cur;
@@ -328,6 +328,7 @@ void Scene::bouclePrincipale() { // main loop
 			INFO(1, "Exporting img \""<<str<<"\"");
 			std::cout << "the value is: " << saveScreenshotPNG(str) << std::endl;	\
 		}
+
 
 		// SDL_RenderPresent(m_renderer);
 		SDL_GL_SwapWindow(m_window);

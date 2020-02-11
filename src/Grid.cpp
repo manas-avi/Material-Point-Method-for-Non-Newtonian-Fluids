@@ -826,11 +826,11 @@ bool Grid::checkParticlesAdapt(std::vector<Particule*> & particules_buf, FLOAT m
 		max_j_buf = std::max(max_j_buf, J);
 		min_j_buf = std::min(min_j_buf, J);
 	}
-	printf("the value of max_j_buf is %f\n", max_j_buf);
-	printf("the value of max_j is %f\n", max_j);
+	// printf("the value of max_j_buf is %f\n", max_j_buf);
+	// printf("the value of max_j is %f\n", max_j);
 
-	printf("the value of min_j_buf is %f\n", min_j_buf);
-	printf("the value of min_j is %f\n", min_j);
+	// printf("the value of min_j_buf is %f\n", min_j_buf);
+	// printf("the value of min_j is %f\n", min_j);
 	if (max_j_buf > max_j * 1.1)
 		return true;
 	if (min_j_buf < min_j * 0.9)

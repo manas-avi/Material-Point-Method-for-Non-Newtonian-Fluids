@@ -88,7 +88,9 @@ void Simulation::init() {
 	}
 	t = 0;
 	time = 0;
-	frame_sample = 0.1;
+	frame_sample_cur = mpm_conf::frame_rate_;
+	printf("the frame rate is %f\n", frame_sample_cur);
+	frame_sample = 0;
 }
 
 void Simulation::clearParticules() {
@@ -138,7 +140,7 @@ void Simulation::Vectorcopy(std::vector<Particule*> & l, std::vector<Particule*>
 
 void Simulation::animate() {
 	++t;
-	time += t*mpm_conf::dt_;
+	time += mpm_conf::dt_;
 
 	INFO(1, "Simulation step : "<< t << " and current dt is " << mpm_conf::dt_);
 	INFO(2, "Simulation time "<< time);
@@ -147,7 +149,7 @@ void Simulation::animate() {
 		if (t%mpm_conf::adapt_step_ == 0 and mpm_conf::adapt_step_bool_) {
 			// try oneStep with increased dt 
 			mpm_conf::dt_ *= 2;
-			INFO(1, "current dt is " << mpm_conf::dt_);
+			// INFO(1, "current dt is " << mpm_conf::dt_);
 			if (not Simulation::oneStepTry()) {
 				// just revert the particules so that they can be updated in the normal case loop
 				Vectorcopy(particules_buf, particules);
@@ -158,7 +160,7 @@ void Simulation::animate() {
 				Vectorcopy(particules_buf, particules);
 				obstacles_buf = obstacles;
 				mpm_conf::dt_ /= 2;
-				INFO(1, "current dt is reverted to " << mpm_conf::dt_);
+				// INFO(1, "current dt is reverted to " << mpm_conf::dt_);
 			}
 		}
 		// first check with cfl criterion
@@ -171,7 +173,7 @@ void Simulation::animate() {
 		}
 		FLOAT beta = 0.5;
 		mpm_conf::dt_ = std::min(mpm_conf::dt_, beta * mpm_conf::grid_spacing_ / max_vel);
-		INFO(1, "current updated dt is " << mpm_conf::dt_);
+		// INFO(1, "current updated dt is " << mpm_conf::dt_);
 
 		// second check with hyper-elasticity criterion
 		FLOAT max_cr = 0;
@@ -183,11 +185,11 @@ void Simulation::animate() {
 			FLOAT c = sqrt((4*mpm_conf::sm_)/(3*density_) + ( (mpm_conf::sm_*(J + 1/J) )/ (2*density_)  ) );
 			max_cr = std::max(max_cr, c);
 		}
-		printf("value of max_cr is %f\n", max_cr);
+		// printf("value of max_cr is %f\n", max_cr);
 		FLOAT alpha = 0.1; //stablization factor
 		mpm_conf::dt_ = std::min(mpm_conf::dt_, alpha * mpm_conf::grid_spacing_ / max_cr);
 
-		INFO(1, "current updated dt is " << mpm_conf::dt_);
+		// INFO(1, "current updated dt is " << mpm_conf::dt_);
 		oneStep();
 
 
@@ -399,18 +401,41 @@ void Simulation::importSim() {
     file.close();
 }
 
-void Simulation::exportSim() const {
-	if (nb_file_e % mpm_conf::export_step_ == 0) {
-		std::stringstream ss;
-		ss <<export_path<<nb_file_e/mpm_conf::export_step_<<".obj";
-		std::string str(ss.str());
-		std::ofstream file(str.c_str());
-		ERROR(file.good(), "cannot open file \""<<str<<"\"", "");
-		INFO(1, "Export file \""<<str<<"\"");
-		exportParticules(file);
-		file.close();
+void Simulation::exportSim() {
+	if (mpm_conf::adapt_step_bool_) {
+		if (time > frame_sample) {
+			printf("current time is %f\n", time);
+			printf("frame_sample %f, \n", frame_sample);
+			frame_sample += frame_sample_cur;
+		// if (nb_file_e % mpm_conf::export_step_ == 0) {
+			std::stringstream ss;
+			ss <<export_path<<nb_file_e<<".obj";
+			// ss <<export_path<<nb_file_e/mpm_conf::export_step_<<".obj";
+			std::string str(ss.str());
+			std::ofstream file(str.c_str());
+			ERROR(file.good(), "cannot open file \""<<str<<"\"", "");
+			INFO(1, "Export file \""<<str<<"\"");
+			exportParticules(file);
+			file.close();
+			++nb_file_e;
+		}
 	}
-	++nb_file_e;
+	else {
+		if (nb_file_e % mpm_conf::export_step_ == 0) {
+			std::stringstream ss;
+			ss <<export_path<<nb_file_e<<".obj";
+			// ss <<export_path<<nb_file_e/mpm_conf::export_step_<<".obj";
+			std::string str(ss.str());
+			std::ofstream file(str.c_str());
+			ERROR(file.good(), "cannot open file \""<<str<<"\"", "");
+			INFO(1, "Export file \""<<str<<"\"");
+			exportParticules(file);
+			file.close();
+		}
+		++nb_file_e;
+
+	}
+
 }
 
 void Simulation::setLoad(std::string s) {
