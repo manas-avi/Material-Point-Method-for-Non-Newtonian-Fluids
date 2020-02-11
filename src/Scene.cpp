@@ -165,6 +165,9 @@ void Scene::init() {
 
 	t = 0;
 	stop = 1000000;
+	sim_time = 0;
+	frame_step = 0.0;
+	frame_step_cur = mpm_conf::frame_rate_;
 	
 	Times::TIMES->init();
 
@@ -308,9 +311,14 @@ void Scene::bouclePrincipale() { // main loop
 			time_elapsed += (FLOAT)Times::TIMES->getTime(Times::total_time_);
 			Times::TIMES->next_loop();
 		}
+		INFO(2, "WALL CLOCK TIME IS ---------" << time_elapsed);
+		INFO(2, "SIM TIME IS ---------" << time_elapsed);
 
+		sim_time += t*mpm_conf::dt_; // have to save dt_ as well too much work 
+		// if (sim_time > frame_step and mpm_conf::save_img)
 		if (t%mpm_conf::export_step_ == 0 and mpm_conf::save_img)
 		{
+			frame_step += frame_step_cur;
 			std::stringstream ss;
 		    ss << std::setw(4) << std::setfill('0') << t/mpm_conf::export_step_;
 		    std::string fnum = ss.str();

@@ -68,6 +68,9 @@ public:
 private:
 	uint step_by_step;
 	uint t;
+	FLOAT sim_time;
+	FLOAT frame_step;
+	FLOAT frame_step_cur;
 	bool end_;
 	bool re_init;
 	int back;

@@ -738,7 +738,6 @@ void Grid::initCollision(std::vector<Obstacle*> obstacles) {
 			}
 		}
 	}
-	printf("I am here\n");
 }
 
 void Grid::collision(std::vector<Obstacle*> obstacles) {
@@ -829,13 +828,9 @@ bool Grid::checkParticlesAdapt(std::vector<Particule*> & particules_buf, FLOAT m
 	}
 	printf("the value of max_j_buf is %f\n", max_j_buf);
 	printf("the value of max_j is %f\n", max_j);
-	printf("abs max diff is %f\n", fabs(max_j - max_j_buf));
-	if (max_j_buf > max_j * 1.01)
-		return true;
 
 	printf("the value of min_j_buf is %f\n", min_j_buf);
 	printf("the value of min_j is %f\n", min_j);
-	printf("abs min diff is %f\n", fabs(min_j - min_j_buf));
 	if (max_j_buf > max_j * 1.1)
 		return true;
 	if (min_j_buf < min_j * 0.9)

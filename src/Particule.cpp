@@ -275,9 +275,22 @@ void Particule::setDensity(FLOAT d) {
 	density = d;
 }
 
+FLOAT Particule::getDensity() const {
+	return density;
+}
+
+
 
 void Particule::setColor(FLOAT r, FLOAT g, FLOAT b) {
 	color = VEC3(r, g, b);
+}
+
+void Particule::setDeformationElastic(MAT3 f_e) {
+	F_e = f_e;
+}
+
+void Particule::setDeformation(MAT3 f) {
+	F = f;
 }
 
 MAT3 Particule::getDeformationElastic() const {
@@ -292,7 +305,8 @@ MAT3 Particule::getDeformationPlastic() const {
 	return F_p;
 }
 MAT3 Particule::getDeformation() const {
-	return F_e*F_p;
+	return F_e;
+	// return F_e*F_p;
 }
 
 const MAT3& Particule::getForceIncrement() const {
@@ -421,6 +435,8 @@ void Particule::update(VEC3 & p, VEC3 & v, MAT3 & b, MAT3 & t) {
 	
 	if (std::isnan(F_e(0, 0)) || std::isinf(F_e(0,0))) {
 		F_e = MAT3::Identity();
+		INFO(1, "Something is wrong here");
+		exit(1);
 	}
 	MAT3 isoF = F_e; // since it passsed by reference to the eigen function so it is better to just protect it
 	MAT3 skewF;

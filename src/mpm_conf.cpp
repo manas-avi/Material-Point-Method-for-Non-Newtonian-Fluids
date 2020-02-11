@@ -78,6 +78,8 @@ namespace mpm_conf {
 	uint adapt_step_ = 1000000;
 	
 	uint export_step_ = 1;
+
+	FLOAT frame_rate_ = 0.1;
 	
 	void loadConf(std::string path_file) {
 		std::ifstream file(path_file.c_str());
@@ -146,7 +148,10 @@ namespace mpm_conf {
 					INFO(3, "poisson "<<poisson_vec_);
 					young_vec_def = true;
 					young_mod_def = true;
-				}  else if (line.substr(0,4) == "<bm>") {
+				}  else if (line.substr(0,4) == "<fr>") {
+					std::istringstream s(line.substr(4));
+					s >> frame_rate_;
+				}   else if (line.substr(0,4) == "<bm>") {
 					std::istringstream s(line.substr(4));
 					s >> bm_;
 				}  else if (line.substr(0,4) == "<sm>") {

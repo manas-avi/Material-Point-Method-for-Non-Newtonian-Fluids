@@ -103,6 +103,7 @@ public:
   void setB(const MAT3 & b);
   Vector3i getCell() const;
 
+  FLOAT getDensity() const;
   void setDensity(FLOAT d);
   void setColor(FLOAT r, FLOAT g, FLOAT b);
   
@@ -110,6 +111,9 @@ public:
   void addDeformationElastic(MAT3 Ddef); //F_e^n+1 = (I + Ddef)F_e^n
   MAT3 getDeformationPlastic() const;
   MAT3 getDeformation() const;
+
+  void setDeformationElastic(MAT3 f_e);
+  void setDeformation(MAT3 f);
 
   const MAT3& getForceIncrement() const;
   const Tensor& getSecondEnergyDer() const;

@@ -92,6 +92,8 @@ namespace mpm_conf {
   extern uint adapt_step_;
   extern bool adapt_step_bool_;
 
+  extern FLOAT frame_rate_;
+
   
   extern uint export_step_; //export particules every x steps 
   void loadConf(std::string file);

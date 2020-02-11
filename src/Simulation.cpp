@@ -67,6 +67,9 @@ void Simulation::init() {
 			Particule *p = particules[ip]; 
 			Particule *np = new Particule(p->getMass(), p->getVolume(),p->getPosition(),
 							 VEC3(0, 0, 1), p->getVelocity());
+			np->setDeformation(p->getDeformation());
+			np->setDeformationElastic(p->getDeformationElastic());
+			np->setDensity(p->getDensity());			
 			particules_buf[ip] = np;
 		}
 		// particules_buf = particules;
@@ -84,6 +87,8 @@ void Simulation::init() {
 		loadScene();
 	}
 	t = 0;
+	time = 0;
+	frame_sample = 0.1;
 }
 
 void Simulation::clearParticules() {
@@ -124,28 +129,19 @@ void Simulation::Vectorcopy(std::vector<Particule*> & l, std::vector<Particule*>
 		Particule *p = r[ip]; 
 		Particule *np = new Particule(p->getMass(), p->getVolume(),p->getPosition(),
 						 VEC3(0, 0, 1), p->getVelocity());
+		np->setDeformation(p->getDeformation());
+		np->setDeformationElastic(p->getDeformationElastic());
+		np->setDensity(p->getDensity());
 		l[ip] = np;
 	}
 }
 
-// void Simulation::Obstaclecopy(std::vector<Obstacle*> & l, std::vector<Obstacle*> r) {
-// 	printf("size of l is %d\n", l.size());
-// 	for (auto& p : l) {
-// 		delete p;
-// 	}
-// 	l.clear();
-// 	l.resize(r.size());
-// 	printf("size of r is %d\n", l.size());
-// 	for (uint ip = 0; ip < r.size(); ++ip) {
-// 		Obstacle p = *r[ip]; 
-// 		l[ip] = &p;
-// 	}
-// }
-
-
 void Simulation::animate() {
 	++t;
+	time += t*mpm_conf::dt_;
+
 	INFO(1, "Simulation step : "<< t << " and current dt is " << mpm_conf::dt_);
+	INFO(2, "Simulation time "<< time);
 	if (!import_) {
 		// so t is the simulation step
 		if (t%mpm_conf::adapt_step_ == 0 and mpm_conf::adapt_step_bool_) {
@@ -153,36 +149,71 @@ void Simulation::animate() {
 			mpm_conf::dt_ *= 2;
 			INFO(1, "current dt is " << mpm_conf::dt_);
 			if (not Simulation::oneStepTry()) {
-				// copy particules from r to l
+				// just revert the particules so that they can be updated in the normal case loop
 				Vectorcopy(particules_buf, particules);
 				obstacles_buf = obstacles;
 			}
 			else {
-				Vectorcopy(particules, particules_buf);
-				obstacles = obstacles_buf;
+				// revert the changes and procees
+				Vectorcopy(particules_buf, particules);
+				obstacles_buf = obstacles;
 				mpm_conf::dt_ /= 2;
-				INFO(1, "current dt is " << mpm_conf::dt_);
+				INFO(1, "current dt is reverted to " << mpm_conf::dt_);
 			}
 		}
+		// first check with cfl criterion
+		FLOAT max_vel = 0;
+		#pragma omp parallel for
+		for (uint ip = 0; ip < particules_buf.size(); ++ip) {
+			Particule *p = particules_buf[ip];
+			VEC3 p_vel = p->getVelocity();
+			max_vel = std::max(p_vel.norm(), max_vel);
+		}
+		FLOAT beta = 0.5;
+		mpm_conf::dt_ = std::min(mpm_conf::dt_, beta * mpm_conf::grid_spacing_ / max_vel);
+		INFO(1, "current updated dt is " << mpm_conf::dt_);
+
+		// second check with hyper-elasticity criterion
+		FLOAT max_cr = 0;
+		#pragma omp parallel for
+		for (uint ip = 0; ip < particules.size(); ++ip) {
+			Particule *p = particules[ip];
+			FLOAT J = p->getDeformation().determinant();
+			FLOAT density_ = p->getDensity();
+			FLOAT c = sqrt((4*mpm_conf::sm_)/(3*density_) + ( (mpm_conf::sm_*(J + 1/J) )/ (2*density_)  ) );
+			max_cr = std::max(max_cr, c);
+		}
+		printf("value of max_cr is %f\n", max_cr);
+		FLOAT alpha = 0.1; //stablization factor
+		mpm_conf::dt_ = std::min(mpm_conf::dt_, alpha * mpm_conf::grid_spacing_ / max_cr);
+
+		INFO(1, "current updated dt is " << mpm_conf::dt_);
+		oneStep();
+
+
+
+
 		// normal case
 		if (mpm_conf::adapt_step_bool_) {
-			bool failure = true;
-			while (failure) {
-				failure = Simulation::oneStepTry();
-				if (failure) {
-					// here things are updated based on particules_buf
-					Vectorcopy(particules_buf, particules);
-					obstacles_buf = obstacles;
-					mpm_conf::dt_ /= 2;
-					INFO(1, "current dt is " << mpm_conf::dt_);
-				}
-				else {
-					Vectorcopy(particules, particules_buf);
-					obstacles = obstacles_buf;	
-					failure = false;
-				}
-				printf("faiilure %d Stuck Inside the loop\n", failure);
-			}
+			// bool failure = true;
+			// while (failure) {
+			// 	failure = Simulation::oneStepTry();
+			// 	if (failure) {
+			// 		// here things are updated based on particules_buf
+			// 		// so reverting the buf back to original
+			// 		Vectorcopy(particules_buf, particules);
+			// 		obstacles_buf = obstacles;
+			// 		mpm_conf::dt_ /= 2;
+			// 		INFO(1, "current dt is " << mpm_conf::dt_);
+			// 		printf("faiilure Stuck Inside the loop\n");
+			// 	}
+			// 	else {
+			// 		// update succesful can proceed
+			// 		Vectorcopy(particules, particules_buf);
+			// 		obstacles = obstacles_buf;	
+			// 		failure = false;
+			// 	}
+			// }
 		}
 		else {
 			oneStep();
@@ -206,32 +237,10 @@ void Simulation::animate() {
 
 bool Simulation::oneStepTry() {
 
-	// FLOAT vel_mag = 0;
-	// FLOAT vel_min = 10000;
-	FLOAT max_j = 0;
-	FLOAT min_j = 10000;
-
-	// printf("particules_buf size 0 is %d\n", particules_buf.size());
-
 	bool failure = false;
 	Times::TIMES->tick(Times::simu_time_);
 	grid.nextStep(); //resets the grid for this step.
 	grid.particulesToGrid(particules_buf);
-	for (uint ip = 0; ip < particules.size(); ++ip) {
-		Particule *p = particules[ip];
-		// VEC3 p_vel = p->getVelocity();
-		// vel_mag = std::max(p_vel.norm(), vel_mag);
-		// vel_min = std::min(p_vel.norm(), vel_min);
-		FLOAT J = (p->getDeformation()).determinant();
-		max_j = std::max(max_j, J);
-		min_j = std::min(min_j, J);
-	}
-	failure = failure or grid.checkParticlesAdapt(particules_buf, max_j, min_j);
-
-	// FLOAT max_vel_pre = 0;
-	// FLOAT min_vel_pre = 10000;
-
-	// failure = failure or grid.checkGridAdapt(max_vel_pre, min_vel_pre); // if something is blowing up return false
 	if (mpm_conf::smooth_vel_) {
 		for (uint i = 0; i < 1; ++i) {
 			grid.smoothVelocity();
@@ -243,13 +252,11 @@ bool Simulation::oneStepTry() {
 	grid.gridToParticules(particules_buf);
 	grid.initCollision(obstacles_buf);
 
-	max_j = 0;
-	min_j = 10000;
+	FLOAT max_j = 0;
+	FLOAT min_j = 10000;
+	#pragma omp parallel for
 	for (uint ip = 0; ip < particules.size(); ++ip) {
 		Particule *p = particules[ip];
-		// VEC3 p_vel = p->getVelocity();
-		// vel_mag = std::max(p_vel.norm(), vel_mag);
-		// vel_min = std::min(p_vel.norm(), vel_min);
 		FLOAT J = (p->getDeformation()).determinant();
 		max_j = std::max(max_j, J);	
 		min_j = std::min(min_j, J);	
@@ -257,21 +264,6 @@ bool Simulation::oneStepTry() {
 	failure = failure or grid.checkParticlesAdapt(particules_buf, max_j, min_j);
 	Times::TIMES->tock(Times::simu_time_);
 	return failure;
-	
-	// FLOAT max_vel_cur = 0;
-	// FLOAT min_vel_cur = 10000;
-	// failure = failure or grid.checkGridAdapt(max_vel_cur, min_vel_cur); // if something is blowing up after collision
-
-	// // not a good matrix does not help and leads to stuck in loop
-	// if (max_vel_cur > max_vel_pre * 2)
-	// 	failure = failure or true;
-	// if (min_vel_cur < min_vel_pre * 0.9)
-	// 	failure = failure or true;
-
-	// sending information from grid to particles
-	
-	// vel_mag = 0;
-	// vel_min = 10000;
 }
 
 void Simulation::oneStep() {

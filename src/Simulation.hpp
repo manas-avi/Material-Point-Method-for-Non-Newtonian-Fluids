@@ -24,6 +24,9 @@ private :
   uint nb_file_i;
   mutable uint nb_file_e;
   uint t;
+  FLOAT time;
+  FLOAT frame_sample;
+  FLOAT frame_sample_cur;
   
   Grid grid;
   std::vector<Particule*> particules;
